@@ -132,6 +132,10 @@ Install it from the Foundry VTT module browser, or use this manifest link:
 https://github.com/brunocalado/canvas-harvest/releases/latest/download/module.json
 ```
 
+To install it by hand, download
+[module.zip](https://github.com/brunocalado/canvas-harvest/releases/latest/download/module.zip) from
+the latest release and unzip it into a folder named `canvas-harvest` inside `Data/modules`.
+
 [Grid Crafter](https://github.com/brunocalado/grid-crafter) is recommended: what players harvest
 becomes what they craft.
 
