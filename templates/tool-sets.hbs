@@ -1,0 +1,37 @@
+<div class="ch-tool-sets-body ch-backdrop">
+  <canvas class="ch-fx" aria-hidden="true"></canvas>
+  {{!-- Core's tab handling reads data-action, data-group and data-tab; the count needs its own markup. --}}
+  <nav class="tabs ch-tabs" aria-roledescription="{{localize "SHEETS.FormNavLabel"}}">
+    {{#each sets}}
+    <a class="ch-tab {{cssClass}}" data-action="tab" data-group="{{group}}" data-tab="{{id}}">
+      <i class="{{icon}}" inert></i>
+      <span>{{localize label}}</span>
+      <span class="ch-tab-count {{#unless count}}ch-none{{/unless}}">{{count}}</span>
+    </a>
+    {{/each}}
+  </nav>
+
+  {{#each sets}}
+  <section class="tab ch-set {{#if active}}active{{/if}}" data-group="{{group}}" data-tab="{{id}}" data-drop-set="{{id}}">
+    <div class="ch-set-grid">
+      {{#each items}}
+      <div class="ch-slot ch-round {{#if fromPackage}}ch-from-package{{/if}}" data-uuid="{{uuid}}" data-set="{{../id}}"
+           data-tooltip-html="{{tip}}" data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{@root.theme}}">
+        <img src="{{img}}" alt="{{name}}">
+        {{#if fromPackage}}
+        <i class="fa-solid fa-box-open ch-package-mark" inert></i>
+        {{else}}
+        <button type="button" class="ch-slot-clear" data-action="removeTool" aria-label="{{localize "CANVASHARVEST.Book.Remove"}}">
+          <i class="fa-solid fa-xmark" inert></i>
+        </button>
+        {{/if}}
+      </div>
+      {{/each}}
+      <div class="ch-slot ch-round ch-slot-new" data-tooltip="CANVASHARVEST.ToolSets.DropHint"></div>
+    </div>
+    {{#unless count}}
+    <p class="ch-set-empty">{{localize "CANVASHARVEST.ToolSets.Empty"}}</p>
+    {{/unless}}
+  </section>
+  {{/each}}
+</div>

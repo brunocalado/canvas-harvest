@@ -1,0 +1,24 @@
+<div class="ch-sound-body">
+  <fieldset class="ch-field ch-volume">
+    <legend>{{localize "CANVASHARVEST.Sounds.Volume"}}</legend>
+    <input type="range" name="volume" min="0" max="100" step="5" value="{{volume}}">
+    <output class="ch-volume-value">{{volume}}%</output>
+  </fieldset>
+
+  {{#each cues}}
+  <fieldset class="ch-field ch-sound-row">
+    <legend>{{localize label}}</legend>
+    <input type="text" name="{{key}}" value="{{value}}" placeholder="{{placeholder}}">
+    <button type="button" class="ch-icon-button" data-action="browse" data-tooltip="CANVASHARVEST.Book.Browse"
+            aria-label="{{localize "CANVASHARVEST.Book.Browse"}}"><i class="fa-solid fa-folder-open" inert></i></button>
+    <button type="button" class="ch-icon-button" data-action="reset" data-tooltip="CANVASHARVEST.Sounds.Reset"
+            aria-label="{{localize "CANVASHARVEST.Sounds.Reset"}}"><i class="fa-solid fa-rotate-left" inert></i></button>
+    <button type="button" class="ch-icon-button" data-action="preview" data-tooltip="CANVASHARVEST.Sounds.Preview"
+            aria-label="{{localize "CANVASHARVEST.Sounds.Preview"}}"><i class="fa-solid fa-play" inert></i></button>
+  </fieldset>
+  {{/each}}
+
+  <footer>
+    <button type="submit" class="ch-primary ch-save"><i class="fa-solid fa-floppy-disk" inert></i> {{localize "CANVASHARVEST.Book.Save"}}</button>
+  </footer>
+</div>

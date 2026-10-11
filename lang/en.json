@@ -1,0 +1,193 @@
+{
+  "TYPES": {
+    "RegionBehavior": {
+      "canvas-harvest": {
+        "spot": "Harvest Spot"
+      }
+    }
+  },
+  "CANVASHARVEST": {
+    "Theme": {
+      "wilds": "Wilds",
+      "forge": "Forge"
+    },
+    "Settings": {
+      "Theme": {
+        "Name": "Theme",
+        "Hint": "How the module's windows, chat cards and map buttons look, for the whole table."
+      },
+      "ToolWhisper": {
+        "Name": "Whisper the Tools Needed",
+        "Hint": "When a player tries to harvest without a tool, the GM whispers them every item that would do. Turn it off to keep the tools a secret."
+      },
+      "ResourceBook": {
+        "Name": "Resource Book",
+        "Label": "Open the Resource Book",
+        "Hint": "The resources players can harvest: what they give, the tools they need, and how many strikes a spot holds."
+      },
+      "ToolSets": {
+        "Name": "Tool Sets",
+        "Label": "Open the Tool Sets",
+        "Hint": "The items that count as tools for each animation. A resource switches on the sets it takes."
+      },
+      "Sounds": {
+        "Name": "Harvest Sounds",
+        "Label": "Open Harvest Sounds",
+        "Hint": "The volume of the harvest sounds for the whole table, and the file each one plays."
+      }
+    },
+    "Animation": {
+      "strike": "Strike",
+      "chop": "Chop",
+      "gather": "Gather",
+      "carve": "Carve"
+    },
+    "Verb": {
+      "strike": "Mine",
+      "chop": "Chop",
+      "gather": "Gather",
+      "carve": "Carve"
+    },
+    "Resource": {
+      "Name": "Name",
+      "Verb": "Verb",
+      "Animation": "Animation",
+      "ToolSets": "Tool Sets",
+      "Tools": "Own tools",
+      "Drops": "Drops",
+      "Weight": "Weight",
+      "Amount": "Min and max",
+      "Min": "Min",
+      "Max": "Max",
+      "Strikes": "Strikes",
+      "Sound": "Sound"
+    },
+    "ToolSets": {
+      "Title": "Tool Sets",
+      "DropHint": "Drop an item here",
+      "Empty": "No tools in this set yet. Drop items from the Items directory, a compendium or a sheet.",
+      "From": "Added by {source}"
+    },
+    "Book": {
+      "Title": "Resource Book",
+      "Open": "Resources",
+      "New": "New Resource",
+      "Search": "Search resources",
+      "World": "World",
+      "From": "From {source}",
+      "Empty": "No resources yet.",
+      "NoMatch": "Nothing matches.",
+      "ChangeImage": "Change the image",
+      "DropTool": "Drop a tool here",
+      "DropDrop": "Drop an item here",
+      "Remove": "Remove",
+      "Browse": "Choose a file",
+      "ResetSound": "Use the animation's sound",
+      "SoundDefault": "The animation's sound",
+      "Save": "Save",
+      "Delete": "Delete",
+      "Discard": "Discard",
+      "DeleteConfirm": "Delete {name}? Spots on the map that use it will show a warning.",
+      "Duplicate": "Duplicate",
+      "FromEdited": "From {source}, edited in this world",
+      "Restore": "Restore",
+      "Category": "Category",
+      "CategoryHint": "Group this resource in the list. With no category of its own, it sits under its animation.",
+      "NewCategory": "New",
+      "NewCategoryLabel": "New category name",
+      "RestoreConfirm": "Restore {name} to the version {source} provides? Your changes to it are lost.",
+      "Unsaved": "Unsaved changes",
+      "DiscardChanges": "Discard the changes to this resource?",
+      "VerbHint": "The word on the resource's button on the map, like Mine or Chop. Left empty, the animation's own word is used.",
+      "AnimationHint": "Only how a strike looks and sounds. A vein, a tree or a carcass can use any of them.",
+      "ToolSetsHint": "Switch on the sets whose items open this resource. A set with no items can't be switched on; fill it with the toolbox button.",
+      "ToolsHint": "Tools for this resource alone. Any one of them, or any item of a set switched on, is enough. With neither, bare hands will do.",
+      "EditToolSets": "Edit the Tool Sets",
+      "ToolSetOn": "{verb} set: {count} items",
+      "ToolSetOne": "{verb} set: 1 item",
+      "ToolSetEmpty": "{verb} set: no items yet",
+      "WeightHint": "Each drop's chance on one strike. Every new drop starts level with the others; slide one down to make it rarer.",
+      "AmountHint": "How many of the item a strike gives when it comes up.",
+      "SoundHint": "Empty means the resource plays its animation's default sound. Press Listen to hear it. To give this resource a sound of its own, choose a file.",
+      "StrikesHint": "How many strikes a spot holds before it runs dry. The GM refills it.",
+      "Preview": "Listen",
+      "Done": "Done",
+      "DragHint": "Drag onto the map to place a spot",
+      "SoundFile": "File",
+      "SoundTip": "Sound: {sound}"
+    },
+    "Errors": {
+      "GMOnly": "Only a GM can do that.",
+      "NoName": "Give the resource a name.",
+      "NameTooLong": "The name is too long.",
+      "VerbTooLong": "The verb is too long.",
+      "CategoryTooLong": "The category is too long.",
+      "BadAnimation": "Pick an animation.",
+      "TooManyTools": "A resource takes at most four tools.",
+      "NoDrops": "Add at least one drop.",
+      "TooManyDrops": "A resource takes at most five drops.",
+      "AlreadyListed": "{name} is already listed.",
+      "Twins": "The same item is listed twice.",
+      "BadNumbers": "A number is out of range.",
+      "FromActor": "{name} exists only on a character sheet. Drop the world or compendium item instead.",
+      "NoGM": "A GM must be online to harvest.",
+      "NotActiveGM": "Only the active GM can run a harvest.",
+      "NotASpot": "There is nothing to harvest here.",
+      "NoResource": "This spot's resource no longer exists.",
+      "NotYourToken": "Select a token you own first.",
+      "NotInside": "Your token must stand in the spot.",
+      "Depleted": "This spot is depleted.",
+      "NeedTool": "You need a tool for this: {tools}.",
+      "AnyTool": "any {verb} tool",
+      "BadToolSets": "A Tool Set this resource uses does not exist.",
+      "Vetoed": "You can't harvest right now.",
+      "Busy": "Someone is already working this spot.",
+      "BrokenResource": "An item this resource gives no longer exists. Tell the GM.",
+      "Failed": "Nothing could be handed out, so the strike was not spent.",
+      "NoRoom": "There is no free space around your token for what this would give. Make room and try again.",
+      "OnlyWebm": "A resource's image can be a picture or a webm video, not another video format.",
+      "UnknownResource": "There is no resource with the id {id}.",
+      "PackageResource": "{name} comes from a package and can't be changed. Duplicate it in the Resource Book first.",
+      "UnknownSpot": "That is not a Harvest Spot.",
+      "UnknownToken": "That token could not be found.",
+      "NotOnScene": "That token is not on this scene."
+    },
+    "Dialog": {
+      "Yes": "Yes",
+      "No": "No"
+    },
+    "Spot": {
+      "TypeHint": "Tokens standing in this region can harvest the chosen resource until it runs dry.",
+      "Depleted": "Depleted",
+      "MissingResource": "{id} (missing)",
+      "FIELDS": {
+        "resource": {
+          "label": "Resource",
+          "hint": "Chosen from the Resource Book."
+        },
+        "remaining": {
+          "label": "Strikes left",
+          "hint": "Starts at the resource's strikes and drops by one each strike; at 0 the spot is dry. Set any number you like."
+        }
+      }
+    },
+    "Chat": {
+      "Left": "Strikes left: {left}",
+      "Depleted": "The spot is depleted.",
+      "NeedTool": "Any one of these tools will do",
+      "Stack": "{name} ×{quantity}",
+      "Undelivered": "{actor} harvested {resource}, but these could not be handed out: {items}. Hand them over yourself."
+    },
+    "Sounds": {
+      "Title": "Harvest Sounds",
+      "Volume": "Volume",
+      "strike": "Strike",
+      "chop": "Chop",
+      "gather": "Gather",
+      "carve": "Carve",
+      "depleted": "Depleted",
+      "Reset": "Use the module's sound",
+      "Preview": "Listen"
+    }
+  }
+}

@@ -1,0 +1,495 @@
+/*!
+ * Canvas Harvest
+ * 2026 https://github.com/brunocalado
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ */
+
+.canvas-harvest.ch-book {
+  .ch-book-body {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+  }
+
+  /* "New Resource" and the search stay put; only the groups below them scroll.
+     Size containment keeps a long list out of the row's height, so the editor alone sizes the
+     window and the list stretches to match it. */
+  .ch-book-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    contain: size;
+    padding: 10px;
+    background: linear-gradient(180deg, var(--ch-bg-1), var(--ch-bg-0));
+    border-right: 1px solid var(--ch-metal-hi);
+
+    .ch-new {
+      flex: none;
+      height: 32px;
+    }
+
+    ol {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      position: relative;
+    }
+
+    /* A category's resources sit one step inside it. */
+    .ch-subgroup > ol {
+      padding-left: var(--ch-chevron);
+    }
+
+    .ch-empty {
+      color: var(--ch-text-dim);
+      font-style: italic;
+    }
+  }
+
+  /* The side padding lives inside the scroller, or it would clip the active entry's glow. */
+  .ch-list-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    margin: 0 -10px;
+    padding: 0 10px 4px;
+    overflow-y: auto;
+  }
+
+  .ch-entry {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    height: auto;
+    padding: 3px 26px 3px 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--ch-radius);
+    color: var(--ch-text);
+    text-align: left;
+
+    img,
+    video {
+      flex: none;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--ch-metal-hi);
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    /* On hover a grip covers the thumbnail: the row drags onto the map. */
+    .ch-entry-thumb {
+      position: relative;
+      display: flex;
+      flex: none;
+      overflow: visible;
+    }
+
+    .ch-drag-grip {
+      position: absolute;
+      inset: 1px;
+      /* Font Awesome gives its icons a fixed width; the insets size this one to the thumbnail. */
+      width: auto;
+      height: auto;
+      display: grid;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 3px;
+      color: var(--ch-trim-hi);
+      font-size: var(--font-size-13);
+      opacity: 0;
+      transition: opacity 120ms;
+    }
+
+    &:hover .ch-drag-grip {
+      opacity: 1;
+    }
+
+    > span:last-child {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &:hover {
+      border-color: var(--ch-metal-hi);
+      background: var(--ch-bg-2);
+    }
+
+    /* Every saved resource can be dragged onto the map. */
+    &[draggable="true"] {
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+
+    &.ch-active {
+      border-color: var(--ch-glow);
+      background: var(--ch-bg-2);
+      box-shadow: 0 0 8px rgba(var(--ch-glow-rgb), 0.4);
+    }
+  }
+
+  /* The animation the resource uses, quiet at the row's end. */
+  .ch-row-marker {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    translate: 0 -50%;
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-11);
+    pointer-events: none;
+  }
+
+  li:hover .ch-row-marker {
+    color: var(--ch-trim-hi);
+  }
+
+  /* A package's resource the GM edited, just before the animation's marker. */
+  .ch-edited-marker {
+    right: 24px;
+    color: var(--ch-trim);
+  }
+
+  .ch-entry:has(~ .ch-edited-marker) {
+    padding-right: 42px;
+  }
+
+  /* The detail pane's layout; its backdrop is the shared .ch-backdrop. */
+  .ch-book-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 18px;
+  }
+
+  /* A resource on its way to the map: the book all but vanishes and lets the drop through. */
+  transition: opacity 150ms;
+
+  &.ch-dragging-out {
+    opacity: 0.12;
+    pointer-events: none;
+  }
+
+  .ch-book-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    /* A registered resource is read here, not edited. */
+    &[inert] {
+      opacity: 0.75;
+    }
+  }
+
+  .ch-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .ch-book-head {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 6px 0 6px 6px;
+  }
+
+  /* The seal is the image picker: a button with no frame of its own. */
+  button.ch-seal {
+    flex: none;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    transition: transform 150ms;
+
+    &:hover {
+      transform: scale(1.04);
+    }
+  }
+
+  .ch-book-names {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .ch-name input,
+  .ch-verb input {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+  }
+
+  .ch-name input {
+    font-family: var(--ch-font-title);
+    font-size: var(--font-size-18);
+  }
+
+  /* The head's first row: name, verb, then sound as wide as its button. */
+  .ch-book-names > .ch-row:first-child {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+  }
+
+  /* The second row: animation as wide as its buttons, the Tool Sets taking the rest. */
+  .ch-head-tools {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  /* Under the head: Strikes taking the room, the resource's own tools as wide as their slots. */
+  .ch-book-tools {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* The switches start at the left; the toolbox button and the "?" close the row on the right. */
+  .ch-tool-sets {
+    gap: 6px;
+
+    > .ch-icon-button {
+      margin-left: auto;
+    }
+  }
+
+  /* One set: its animation's icon, lit with the glow while the switch is on, then the switch. */
+  .ch-tool-set {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--ch-text-dim);
+    transition: color 150ms;
+
+    > i {
+      width: 1.1em;
+      text-align: center;
+    }
+
+    &.ch-on > i {
+      color: var(--ch-glow);
+      text-shadow: 0 0 6px rgba(var(--ch-glow-rgb), 0.6);
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.5;
+    }
+  }
+
+  .ch-animation {
+    gap: 4px;
+
+    .ch-help {
+      margin-left: 4px;
+    }
+  }
+
+  /* Both fields come out wider than their controls (Sound by its legend, Tools by the row's share),
+     so the controls sit in the middle instead of leaving the slack on one side. Tools keeps its "?"
+     at the right end: the auto margins split the slack before the slots and before the "?". */
+  .ch-sound {
+    justify-content: center;
+  }
+
+  .ch-tools {
+    --ch-slot: 32px;
+    gap: 8px;
+  }
+
+  .ch-slot {
+    cursor: default;
+  }
+
+  .ch-slot-clear {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: none;
+    width: 18px;
+    height: 18px;
+    min-height: 0;
+    padding: 0;
+    line-height: 16px;
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--ch-metal-hi);
+    border-radius: 50%;
+    color: var(--ch-text);
+  }
+
+  .ch-slot:hover .ch-slot-clear {
+    display: block;
+  }
+
+  /* One drop per row: slot, weight, min, max, remove. The head row names the sliders once.
+     Always as tall as a full list, so the window keeps one height and Save stays put whatever the
+     resource holds: the head row, a slot and gap per drop, then the fieldset's padding, border and legend. */
+  .ch-drops {
+    --ch-slot: 42px;
+    min-height: calc(14px + var(--ch-drop-rows) * (var(--ch-slot) + 6px) + 28px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .ch-drop-row {
+    display: grid;
+    grid-template-columns: var(--ch-slot) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 30px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .ch-drop-head {
+    color: var(--ch-text-dim);
+
+    /* Each label starts where its capsule's slider does. */
+    > span {
+      padding-left: 11px;
+    }
+
+    font-size: var(--font-size-11);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+
+    .ch-help {
+      margin: 0;
+      justify-self: center;
+      font-size: var(--font-size-13);
+      text-transform: none;
+    }
+  }
+
+  .ch-slider {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+
+    input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      accent-color: var(--ch-glow);
+    }
+
+    /* A lone drop's weight: locked and dimmed, its 100% beside it still at full strength. */
+    input[type="range"]:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    output {
+      min-width: 1.6em;
+      color: var(--ch-trim-hi);
+      font-family: var(--ch-font-title);
+      font-size: var(--font-size-18);
+      text-align: right;
+    }
+  }
+
+  /* In a drop row the columns sit close, so each slider and its value share one capsule: the number
+     reads as that slider's, not as the start of the next. */
+  .ch-drop-row .ch-slider {
+    gap: 6px;
+    padding: 2px 4px 2px 10px;
+    /* The same frame as every fieldset (Strikes included), so the book reads as one set of boxes. */
+    border: 1px solid var(--ch-metal-hi);
+    border-radius: var(--ch-radius);
+
+    output {
+      min-width: 1.8em;
+      padding: 0 6px;
+      background: var(--ch-bg-0);
+      border: 1px solid var(--ch-metal-hi);
+      border-radius: calc(var(--ch-radius) - 2px);
+      font-size: var(--font-size-16);
+      line-height: 1.5;
+      text-align: center;
+    }
+  }
+
+  /* Wide enough for "100%", so every drop row's sliders line up. */
+  .ch-slider output.ch-share {
+    min-width: 3.4em;
+    white-space: nowrap;
+  }
+
+  .ch-danger:hover:not(:disabled) {
+    border-color: var(--ch-danger);
+    box-shadow: 0 0 10px var(--ch-danger);
+    color: var(--ch-danger);
+  }
+
+  /* Save, Delete (or Restore) and Duplicate close the row on the right; a package's note sits on the left. */
+  .ch-book-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+
+    .ch-icon-button {
+      width: 36px;
+      height: 34px;
+    }
+
+    /* Pushes the rest right; a package's note, when there is one, takes over the slack. */
+    .ch-category {
+      flex: 0 1 auto;
+      min-width: 0;
+      max-width: 22ch;
+      height: 34px;
+      margin-right: auto;
+
+      span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      &.ch-unset span {
+        color: var(--ch-text-dim);
+      }
+    }
+
+    .ch-category:has(+ .ch-from) {
+      margin-right: 0;
+    }
+
+    .ch-from {
+      margin-right: auto;
+      color: var(--ch-text-dim);
+      font-style: italic;
+    }
+  }
+
+  /* As tall as the footer's other buttons. The sheen runs only while there are edits to save, so it
+     reads as "unsaved". */
+  .ch-save {
+    --ch-primary-height: 34px;
+    --ch-primary-pad: 28px;
+    --ch-primary-font: var(--font-size-18);
+    /* Core gives every button a 36px minimum. */
+    min-height: 0;
+
+    &:not(.ch-dirty)::after {
+      animation: none;
+    }
+
+    &.ch-dirty {
+      box-shadow: 0 0 26px rgba(var(--ch-glow-rgb), 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+  }
+}

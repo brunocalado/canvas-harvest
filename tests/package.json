@@ -1,0 +1,11 @@
+{
+  "name": "canvas-harvest-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "live": "node live/run.js"
+  },
+  "dependencies": {
+    "playwright": "1.47.2"
+  }
+}

@@ -1,0 +1,20 @@
+<div class="canvas-harvest ch-chat-card ch-theme-{{theme}}{{#if depleted}} ch-depleted{{/if}}">
+  <header class="ch-chat-header">
+    {{!-- A video stays on its first frame: a long chat would otherwise play one per strike. --}}
+    {{#if resourceVideo}}<video src="{{resource.img}}" preload="auto" muted playsinline disablepictureinpicture></video>{{else}}<img src="{{resource.img}}" alt="">{{/if}}
+    <div>
+      <h3>{{actorName}}</h3>
+      <span class="ch-chat-verb"><i class="fa-solid {{icon}}" inert></i> {{verb}} · {{resource.name}}</span>
+    </div>
+  </header>
+  <ul class="ch-chat-items">
+    {{#each drops}}
+    <li>
+      <img src="{{img}}" alt="">
+      <span class="ch-chat-name">{{name}}</span>
+      <strong>×{{quantity}}</strong>
+    </li>
+    {{/each}}
+  </ul>
+  <p class="ch-chat-left">{{#if depleted}}{{localize "CANVASHARVEST.Chat.Depleted"}}{{else}}{{localize "CANVASHARVEST.Chat.Left" left=left}}{{/if}}</p>
+</div>

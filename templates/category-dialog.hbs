@@ -1,0 +1,15 @@
+<fieldset class="ch-field">
+  <legend>{{localize "CANVASHARVEST.Book.Category"}}</legend>
+  <div class="ch-chip-cloud">
+    {{#each categories}}
+    <button type="button" class="ch-chip {{#if active}}ch-active{{/if}}" data-category="{{name}}" aria-pressed="{{active}}">
+      {{name}}{{#if count}}<span class="ch-chip-count">{{count}}</span>{{/if}}
+    </button>
+    {{/each}}
+    <button type="button" class="ch-chip ch-chip-add" data-new-category>
+      <i class="fa-solid fa-plus" inert></i> {{localize "CANVASHARVEST.Book.NewCategory"}}
+    </button>
+    <input type="text" class="ch-chip-input" maxlength="{{max}}" autocomplete="off" hidden
+           aria-label="{{localize "CANVASHARVEST.Book.NewCategoryLabel"}}">
+  </div>
+</fieldset>

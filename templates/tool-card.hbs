@@ -1,0 +1,17 @@
+<div class="canvas-harvest ch-chat-card ch-tool-card ch-theme-{{theme}}">
+  <header class="ch-chat-header">
+    {{#if resourceVideo}}<video src="{{resource.img}}" preload="auto" muted playsinline disablepictureinpicture></video>{{else}}<img src="{{resource.img}}" alt="">{{/if}}
+    <div>
+      <h3>{{resource.name}}</h3>
+      <span class="ch-chat-verb"><i class="fa-solid {{icon}}" inert></i> {{localize "CANVASHARVEST.Chat.NeedTool"}}</span>
+    </div>
+  </header>
+  <ul class="ch-chat-items">
+    {{#each tools}}
+    <li>
+      <img src="{{img}}" alt="">
+      <span class="ch-chat-name">{{name}}</span>
+    </li>
+    {{/each}}
+  </ul>
+</div>

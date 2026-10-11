@@ -1,0 +1,29 @@
+{
+  "id": "canvas-harvest",
+  "title": "Canvas Harvest",
+  "description": "Mine veins, chop trees, gather herbs and carve game on the map. What you harvest jumps out and lands as Canvas Loot.",
+  "version": "0.0.1",
+  "authors": [{ "name": "Mestre Digital", "url": "http://youtube.com/@mestredigital", "flags": {} }],
+  "compatibility": { "minimum": "14", "verified": "14" },
+  "esmodules": ["scripts/main.js"],
+  "styles": ["styles/base.css", "styles/dialog.css", "styles/book.css", "styles/chat-card.css", "styles/sound-config.css", "styles/tool-sets.css"],
+  "languages": [{ "lang": "en", "name": "English", "path": "lang/en.json" }],
+  "documentTypes": { "RegionBehavior": { "spot": {} } },
+  "socket": false,
+  "relationships": {
+    "requires": [{
+      "id": "canvas-loot", "type": "module",
+      "manifest": "https://github.com/brunocalado/canvas-loot/releases/latest/download/module.json",
+      "compatibility": { "minimum": "0.2.0" },
+      "reason": "Harvested items land on the map as Canvas Loot tiles."
+    }],
+    "recommends": [{
+      "id": "grid-crafter", "type": "module",
+      "manifest": "https://github.com/brunocalado/grid-crafter/releases/latest/download/module.json",
+      "reason": "What players harvest becomes what they craft."
+    }]
+  },
+  "url": "https://github.com/brunocalado/canvas-harvest",
+  "manifest": "https://github.com/brunocalado/canvas-harvest/releases/latest/download/module.json",
+  "download": "https://github.com/brunocalado/canvas-harvest/releases/latest/download/module.zip"
+}

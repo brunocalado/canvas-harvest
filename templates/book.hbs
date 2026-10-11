@@ -1,0 +1,230 @@
+<div class="ch-book-body">
+  {{#*inline "head"}}
+  <summary>
+    <i class="fa-solid fa-chevron-right ch-chevron" inert></i>
+    {{#if icon}}<i class="fa-solid {{icon}} ch-group-icon" inert></i>{{/if}}
+    <span class="ch-group-label">{{label}}</span>
+    <span class="ch-group-count">{{count}}</span>
+  </summary>
+  {{/inline}}
+  {{#*inline "entries"}}
+  <ol>
+    {{#each resources}}
+    <li data-search="{{search}}">
+      <button type="button" class="ch-entry {{#if active}}ch-active{{/if}}" data-action="selectResource" data-resource-id="{{id}}"
+              data-tooltip-html="{{tip}}" data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{@root.theme}}">
+        <span class="ch-entry-thumb">
+          {{#if video}}<video src="{{img}}" autoplay loop muted playsinline disablepictureinpicture></video>{{else}}<img src="{{img}}" alt="">{{/if}}
+          <i class="fa-solid fa-grip-vertical ch-drag-grip" inert></i>
+        </span>
+        <span>{{name}}</span>
+      </button>
+      {{#if edited}}<i class="fa-solid fa-pen-nib ch-row-marker ch-edited-marker" inert></i>{{/if}}
+      <i class="fa-solid {{icon}} ch-row-marker" inert></i>
+    </li>
+    {{/each}}
+  </ol>
+  {{/inline}}
+  <aside class="ch-book-list">
+    <button type="button" class="ch-button ch-new" data-action="newResource">
+      <i class="fa-solid fa-plus" inert></i> {{localize "CANVASHARVEST.Book.New"}}
+    </button>
+    <div class="ch-search">
+      <i class="fa-solid fa-magnifying-glass" inert></i>
+      <input type="text" name="search" value="{{query}}" autocomplete="off"
+             placeholder="{{localize "CANVASHARVEST.Book.Search"}}" aria-label="{{localize "CANVASHARVEST.Book.Search"}}">
+    </div>
+    <div class="ch-list-scroll">
+      {{#each groups}}
+      <details class="ch-group" data-group="{{key}}" {{#unless collapsed}}open{{/unless}}>
+        {{> head}}
+        {{#if categories}}
+        {{#each categories}}
+        <details class="ch-group ch-subgroup" data-group="{{key}}" {{#unless collapsed}}open{{/unless}}>
+          {{> head}}
+          {{> entries}}
+        </details>
+        {{/each}}
+        {{else}}
+        {{> entries}}
+        {{/if}}
+      </details>
+      {{else}}
+      <p class="ch-empty">{{localize "CANVASHARVEST.Book.Empty"}}</p>
+      {{/each}}
+      <p class="ch-empty ch-no-match" hidden>{{localize "CANVASHARVEST.Book.NoMatch"}}</p>
+    </div>
+  </aside>
+
+  <section class="ch-book-detail ch-backdrop">
+    <canvas class="ch-fx" aria-hidden="true"></canvas>
+    <div class="ch-book-fields">
+      <div class="ch-book-head">
+        <button type="button" class="ch-seal" data-action="browseImage" aria-label="{{localize "CANVASHARVEST.Book.ChangeImage"}}"
+                data-tooltip="CANVASHARVEST.Book.ChangeImage">
+          {{#if imgVideo}}
+          <video src="{{draft.img}}" autoplay loop muted playsinline disablepictureinpicture></video>
+          {{else}}
+          <img src="{{draft.img}}" alt="">
+          {{/if}}
+        </button>
+        <div class="ch-book-names">
+          <div class="ch-row">
+            <fieldset class="ch-field ch-name">
+              <legend>{{localize "CANVASHARVEST.Resource.Name"}}</legend>
+              <input type="text" name="name" value="{{draft.name}}" maxlength="{{limits.name}}">
+            </fieldset>
+            <fieldset class="ch-field ch-verb">
+              <legend>{{localize "CANVASHARVEST.Resource.Verb"}}</legend>
+              <input type="text" name="verb" value="{{draft.verb}}" placeholder="{{verbPlaceholder}}" maxlength="{{limits.verb}}">
+              <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{verbHelp}}"
+                 data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="UP"></i>
+            </fieldset>
+            {{!-- Rarely changed, so the sound is one button that opens its own dialog. --}}
+            <fieldset class="ch-field ch-sound">
+              <legend>{{localize "CANVASHARVEST.Resource.Sound"}}</legend>
+              <button type="button" class="ch-icon-button ch-sound-button {{#if customSound}}ch-active{{/if}}" data-action="editSound"
+                      aria-label="{{soundTip}}" data-tooltip="{{soundTip}}">
+                <i class="fa-solid fa-volume-high" inert></i>
+              </button>
+            </fieldset>
+          </div>
+          <div class="ch-row ch-head-tools">
+            <fieldset class="ch-field ch-animation">
+              <legend>{{localize "CANVASHARVEST.Resource.Animation"}}</legend>
+              {{#each animations}}
+              <button type="button" class="ch-icon-button {{#if active}}ch-active{{/if}}" data-action="setAnimation" data-animation="{{id}}"
+                      aria-pressed="{{active}}" aria-label="{{label}}" data-tooltip="{{label}}">
+                <i class="fa-solid {{icon}}" inert></i>
+              </button>
+              {{/each}}
+              <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{animationHelp}}"
+                 data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="UP"></i>
+            </fieldset>
+            <fieldset class="ch-field ch-tool-sets">
+              <legend>{{localize "CANVASHARVEST.Resource.ToolSets"}}</legend>
+              {{#each toolSets}}
+              <label class="ch-tool-set {{#if on}}ch-on{{/if}}" data-tooltip="{{tip}}">
+                <i class="fa-solid {{icon}}" inert></i>
+                <input type="checkbox" class="ch-toggle" name="toolSets.{{id}}" aria-label="{{tip}}" {{checked on}} {{disabled empty}}>
+              </label>
+              {{/each}}
+              <button type="button" class="ch-icon-button" data-action="openToolSets"
+                      aria-label="{{localize "CANVASHARVEST.Book.EditToolSets"}}" data-tooltip="CANVASHARVEST.Book.EditToolSets">
+                <i class="fa-solid fa-toolbox" inert></i>
+              </button>
+              <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{toolSetsHelp}}"
+                 data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="UP"></i>
+            </fieldset>
+          </div>
+        </div>
+      </div>
+
+      {{!-- Under the head: how many strikes a spot holds, and the tools for this resource alone. --}}
+      <div class="ch-row ch-book-tools">
+        <fieldset class="ch-field ch-strikes">
+          <legend>{{localize "CANVASHARVEST.Resource.Strikes"}}</legend>
+          <div class="ch-slider">
+            <input type="range" name="strikes" min="{{limits.strikes.[0]}}" max="{{limits.strikes.[1]}}" step="1" value="{{draft.strikes}}"
+                   aria-label="{{localize "CANVASHARVEST.Resource.Strikes"}}">
+            <output data-for="strikes">{{draft.strikes}}</output>
+          </div>
+          <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{strikesHelp}}"
+             data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="UP"></i>
+        </fieldset>
+        <fieldset class="ch-field ch-tools">
+          <legend>{{localize "CANVASHARVEST.Resource.Tools"}}</legend>
+          {{#each tools}}
+          <div class="ch-slot ch-round" data-drop="tool" data-index="{{index}}"
+               data-tooltip="{{#if item}}{{item.name}}{{else}}{{localize "CANVASHARVEST.Book.DropTool"}}{{/if}}">
+            {{#if item}}
+            <img src="{{item.img}}" alt="{{item.name}}">
+            <button type="button" class="ch-slot-clear" data-action="clearTool" aria-label="{{localize "CANVASHARVEST.Book.Remove"}}">
+              <i class="fa-solid fa-xmark" inert></i>
+            </button>
+            {{/if}}
+          </div>
+          {{/each}}
+          <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{toolsHelp}}"
+             data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="UP"></i>
+        </fieldset>
+      </div>
+
+      <fieldset class="ch-field ch-drops" style="--ch-drop-rows: {{limits.drops}}">
+        <legend>{{localize "CANVASHARVEST.Resource.Drops"}}</legend>
+        {{#if drops.length}}
+        <div class="ch-drop-row ch-drop-head" aria-hidden="true">
+          <span></span>
+          <span>{{localize "CANVASHARVEST.Resource.Weight"}}</span>
+          <span>{{localize "CANVASHARVEST.Resource.Min"}}</span>
+          <span>{{localize "CANVASHARVEST.Resource.Max"}}</span>
+          <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{dropsHelp}}"
+             data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="LEFT"></i>
+        </div>
+        {{/if}}
+        {{#each drops}}
+        <div class="ch-drop-row" data-index="{{index}}">
+          <div class="ch-slot" data-drop="drop" data-index="{{index}}" data-tooltip="{{item.name}}">
+            <img src="{{item.img}}" alt="{{item.name}}">
+          </div>
+          <div class="ch-slider">
+            <input type="range" name="drops.{{index}}.weight" min="{{@root.limits.weight.[0]}}" max="{{@root.limits.weight.[1]}}" step="1"
+                   value="{{weight}}" aria-label="{{localize "CANVASHARVEST.Resource.Weight"}}"{{#if @root.soleDrop}} disabled{{/if}}>
+            <output class="ch-share" data-index="{{index}}">{{share}}</output>
+          </div>
+          <div class="ch-slider">
+            <input type="range" name="drops.{{index}}.min" min="{{@root.limits.count.[0]}}" max="{{@root.limits.count.[1]}}" step="1"
+                   value="{{min}}" aria-label="{{localize "CANVASHARVEST.Resource.Min"}}">
+            <output data-for="drops.{{index}}.min">{{min}}</output>
+          </div>
+          <div class="ch-slider">
+            <input type="range" name="drops.{{index}}.max" min="{{@root.limits.count.[0]}}" max="{{@root.limits.count.[1]}}" step="1"
+                   value="{{max}}" aria-label="{{localize "CANVASHARVEST.Resource.Max"}}">
+            <output data-for="drops.{{index}}.max">{{max}}</output>
+          </div>
+          <button type="button" class="ch-icon-button ch-danger" data-action="clearDrop"
+                  aria-label="{{localize "CANVASHARVEST.Book.Remove"}}" data-tooltip="CANVASHARVEST.Book.Remove">
+            <i class="fa-solid fa-trash" inert></i>
+          </button>
+        </div>
+        {{/each}}
+        {{#if canAddDrop}}
+        <div class="ch-drop-row">
+          <div class="ch-slot" data-drop="drop" data-tooltip="CANVASHARVEST.Book.DropDrop"></div>
+        </div>
+        {{/if}}
+      </fieldset>
+    </div>
+
+    {{!-- The category on the left, then a package's note; Save, then Delete (Restore for a package's
+         edited resource) and Duplicate, on the right. --}}
+    <footer class="ch-book-controls">
+      <button type="button" class="ch-button ch-category {{#unless category.set}}ch-unset{{/unless}}" data-action="setCategory"
+              data-tooltip="CANVASHARVEST.Book.CategoryHint">
+        <i class="fa-solid fa-tag" inert></i> <span>{{category.label}}</span>
+      </button>
+      {{#if isPackage}}<span class="ch-from">{{fromNote}}</span>{{/if}}
+      <button type="button" class="ch-primary ch-save {{#if dirty}}ch-dirty{{/if}}" data-action="saveResource">
+        <i class="fa-solid fa-floppy-disk" inert></i> {{localize "CANVASHARVEST.Book.Save"}}
+      </button>
+      {{#if isPackage}}
+      {{#if edited}}
+      <button type="button" class="ch-icon-button" data-action="restoreResource"
+              aria-label="{{localize "CANVASHARVEST.Book.Restore"}}" data-tooltip="CANVASHARVEST.Book.Restore">
+        <i class="fa-solid fa-rotate-left" inert></i>
+      </button>
+      {{/if}}
+      {{else}}
+      <button type="button" class="ch-icon-button ch-danger" data-action="deleteResource"
+              aria-label="{{#if isNew}}{{localize "CANVASHARVEST.Book.Discard"}}{{else}}{{localize "CANVASHARVEST.Book.Delete"}}{{/if}}"
+              data-tooltip="{{#if isNew}}CANVASHARVEST.Book.Discard{{else}}CANVASHARVEST.Book.Delete{{/if}}">
+        <i class="fa-solid fa-trash" inert></i>
+      </button>
+      {{/if}}
+      <button type="button" class="ch-icon-button" data-action="duplicateResource" {{#if isNew}}disabled{{/if}}
+              aria-label="{{localize "CANVASHARVEST.Book.Duplicate"}}" data-tooltip="CANVASHARVEST.Book.Duplicate">
+        <i class="fa-solid fa-clone" inert></i>
+      </button>
+    </footer>
+  </section>
+</div>

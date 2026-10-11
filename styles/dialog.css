@@ -1,0 +1,140 @@
+/*!
+ * Canvas Harvest
+ * 2026 https://github.com/brunocalado
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ */
+
+/* The module's DialogV2 windows: confirmations. */
+.canvas-harvest.ch-dialog {
+  min-width: 320px;
+
+  /* `.ch-app .window-content` zeroes the padding the app frame doesn't need; a dialog does. */
+  .window-content {
+    padding: 14px 14px 6px;
+  }
+
+  .dialog-content p {
+    margin: 0 0 8px;
+    color: var(--ch-text);
+    font-size: var(--font-size-14);
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .form-footer {
+    justify-content: center;
+    gap: 10px;
+    padding: 6px 14px 14px;
+
+    .ch-button {
+      flex: 0 1 120px;
+      height: 32px;
+    }
+  }
+}
+
+/* The Resource Book's sound: one field with its file and its buttons. */
+.canvas-harvest.ch-sound-dialog {
+  /* Core lays a dialog's fieldsets out in a column; this one is a single row. */
+  fieldset.ch-sound {
+    flex-direction: row;
+  }
+
+  .ch-sound input {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+  }
+
+  .ch-sound .ch-help {
+    margin-left: 0;
+  }
+}
+
+/* The Resource Book's category: one chip lit at most, and New to coin another. */
+.canvas-harvest.ch-category-dialog {
+  .ch-chip-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    /* Room for the lit chip's glow, which the scroll box would otherwise clip square. */
+    margin: -6px;
+    padding: 6px;
+  }
+
+  .ch-chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    height: 28px;
+    margin: 0;
+    padding: 0 11px;
+    /* Off: a plain panel with full-strength text. On adds the metal fill, trim border, bold and
+       glow, so the two still tell apart without dimming the off ones into the background. */
+    background: var(--ch-bg-1);
+    border: 1px solid var(--ch-metal-hi);
+    border-radius: var(--ch-radius);
+    color: var(--ch-text);
+    font-size: var(--font-size-13);
+    line-height: 1;
+    transition: border-color 150ms, box-shadow 150ms, color 150ms;
+
+    /* New hides while its field is open; the display above would otherwise beat [hidden]. */
+    &[hidden] {
+      display: none;
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: var(--ch-text);
+      border-color: var(--ch-glow);
+      box-shadow: 0 0 8px rgba(var(--ch-glow-rgb), 0.4);
+      outline: none;
+    }
+
+    &.ch-active {
+      background: linear-gradient(180deg, var(--ch-metal-hi), var(--ch-metal));
+      border-color: var(--ch-trim-hi);
+      color: var(--ch-trim-hi);
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(var(--ch-glow-rgb), 0.55);
+    }
+  }
+
+  .ch-chip-count {
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-11);
+    font-weight: normal;
+  }
+
+  .ch-chip.ch-active .ch-chip-count {
+    color: var(--ch-glow-2);
+  }
+
+  /* Dashed in the trim colour: an action, not a category, but as easy to find as one. */
+  .ch-chip-add {
+    background: transparent;
+    border: 1px dashed var(--ch-trim);
+    color: var(--ch-trim-hi);
+  }
+
+  /* Where New was, the same shape, so the cloud doesn't jump while a name is typed. */
+  .ch-chip-input {
+    flex: none;
+    width: 140px;
+    height: 28px;
+    padding: 0 11px;
+    background: var(--ch-bg-0);
+    border: 1px solid var(--ch-glow);
+    border-radius: var(--ch-radius);
+    color: var(--ch-text);
+    font-size: var(--font-size-13);
+    box-shadow: 0 0 8px rgba(var(--ch-glow-rgb), 0.4);
+  }
+}

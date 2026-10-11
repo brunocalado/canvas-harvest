@@ -1,0 +1,120 @@
+/*!
+ * Canvas Harvest
+ * 2026 https://github.com/brunocalado
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ */
+
+.canvas-harvest.ch-chat-card {
+  padding: 8px;
+  border: 1px solid var(--ch-trim);
+  border-radius: var(--ch-radius);
+  background: linear-gradient(180deg, var(--ch-bg-2), var(--ch-bg-0));
+  color: var(--ch-text);
+  box-shadow: inset 0 0 18px rgba(var(--ch-glow-rgb), 0.15);
+
+  .ch-chat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    img,
+    video {
+      flex: none;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--ch-trim);
+      border-radius: 50%;
+      background: var(--ch-bg-0);
+      box-shadow: 0 0 10px rgba(var(--ch-glow-rgb), 0.5);
+      object-fit: cover;
+    }
+
+    div {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    h3 {
+      margin: 0;
+      border: none;
+      color: var(--ch-trim-hi);
+      font-family: var(--ch-font-title);
+      font-size: var(--font-size-18);
+    }
+  }
+
+  .ch-chat-verb {
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-12);
+
+    i {
+      color: var(--ch-glow);
+    }
+  }
+
+  .ch-chat-items {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 8px 0 6px;
+    padding: 6px;
+    border-radius: var(--ch-radius);
+    background: rgba(0, 0, 0, 0.35);
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    img {
+      flex: none;
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 3px;
+    }
+
+    strong {
+      color: var(--ch-trim-hi);
+      font-family: var(--ch-font-title);
+    }
+  }
+
+  .ch-chat-name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ch-chat-left {
+    margin: 0;
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-12);
+    text-align: right;
+  }
+
+  /* Tools are round, as in the Resource Book. */
+  &.ch-tool-card .ch-chat-items {
+    margin-bottom: 0;
+
+    img {
+      border-radius: 50%;
+    }
+  }
+
+  &.ch-depleted {
+    .ch-chat-header img,
+    .ch-chat-header video {
+      filter: grayscale(1);
+      box-shadow: none;
+    }
+
+    .ch-chat-left {
+      color: var(--ch-danger);
+    }
+  }
+}
