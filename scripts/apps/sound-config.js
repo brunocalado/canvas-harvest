@@ -6,14 +6,15 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { MODULE_ID, SETTING_SOUND_VOLUME, SOUND_CUES, TEMPLATE_PATH, THEMES } from "../constants.js";
-import { getTheme, SingleWindow } from "../helpers.js";
+import { MODULE_ID, RESOURCE_LIMITS, SETTING_SOUND_RADIUS, SETTING_SOUND_VOLUME, SOUND_CUES, TEMPLATE_PATH, THEMES } from "../constants.js";
+import { getTheme, help, SingleWindow } from "../helpers.js";
 import { defaultCueSource, playSound } from "../sound.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
- * Every sound option in one place, for the GM: the base volume of the cues and the file for each.
+ * Every sound option in one place, for the GM: the base volume of the cues, how far they carry and the
+ * file for each.
  */
 export class SoundConfig extends SingleWindow(HandlebarsApplicationMixin(ApplicationV2)) {
   static DEFAULT_OPTIONS = {
@@ -45,6 +46,10 @@ export class SoundConfig extends SingleWindow(HandlebarsApplicationMixin(Applica
   async _prepareContext(options) {
     return {
       volume: Math.round(game.settings.get(MODULE_ID, SETTING_SOUND_VOLUME) * 100),
+      radius: game.settings.get(MODULE_ID, SETTING_SOUND_RADIUS),
+      radiusRange: RESOURCE_LIMITS.soundRadius,
+      radiusHelp: help("CANVASHARVEST.Sounds.Radius", "CANVASHARVEST.Sounds.RadiusHint"),
+      theme: getTheme(),
       cues: Object.entries(SOUND_CUES).map(([cue, key]) => ({
         key,
         label: `CANVASHARVEST.Sounds.${cue}`,
@@ -62,6 +67,10 @@ export class SoundConfig extends SingleWindow(HandlebarsApplicationMixin(Applica
     const volume = this.element.querySelector("input[name='volume']");
     volume.addEventListener("input", () => {
       this.element.querySelector(".ch-volume-value").textContent = `${volume.value}%`;
+    });
+    const radius = this.element.querySelector("input[name='radius']");
+    radius.addEventListener("input", () => {
+      this.element.querySelector(".ch-radius-value").textContent = radius.value;
     });
   }
 
@@ -106,6 +115,7 @@ export class SoundConfig extends SingleWindow(HandlebarsApplicationMixin(Applica
   static async #onSubmit(event, form, formData) {
     const data = formData.object;
     await game.settings.set(MODULE_ID, SETTING_SOUND_VOLUME, Math.clamp(Number(data.volume) || 0, 0, 100) / 100);
+    await game.settings.set(MODULE_ID, SETTING_SOUND_RADIUS, Math.clamp(Math.round(Number(data.radius)) || 12, ...RESOURCE_LIMITS.soundRadius));
     for ( const key of Object.values(SOUND_CUES) ) {
       await game.settings.set(MODULE_ID, key, String(data[key] ?? "").trim());
     }

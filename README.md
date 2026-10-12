@@ -109,6 +109,13 @@ window, opened from the module's settings. The sounds play on the Environment ch
 player's own Environment volume applies. A resource can have a sound of its own, chosen with the
 speaker button beside its animations in the Resource Book.
 
+A harvest is heard from the spot, and only by the tokens close enough to hear it: 12 grid spaces by
+default, changed with **Reach** in the same window. A wall that blocks sound stops it, and so does a
+floor between Levels. That floor is a region with the Define Surface behavior, which stops sight
+too. Without one, sound and sight pass from one Level to the other, and the height between them
+counts toward the reach. A GM with no token selected hears every harvest on the scene. With a token
+selected, the GM hears what that token hears.
+
 To keep the tools a secret, turn off **Whisper the Tools Needed**: the player then gets only the
 short warning.
 

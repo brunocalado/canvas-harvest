@@ -14,12 +14,20 @@
     padding: 14px;
   }
 
-  .ch-volume-value {
+  .ch-volume-value,
+  .ch-radius-value {
     min-width: 3.2em;
     color: var(--ch-trim-hi);
     font-family: var(--ch-font-title);
     font-size: var(--font-size-18);
     text-align: right;
+  }
+
+  .ch-unit {
+    margin-left: -4px;
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-13);
+    white-space: nowrap;
   }
 
   .ch-sound-row {

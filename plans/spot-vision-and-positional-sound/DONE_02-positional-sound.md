@@ -1,5 +1,54 @@
 # Phase 2 — Harvest sounds come from the spot, within earshot, cut by walls and Levels
 
+## Departures
+
+Landed on v14 build 369, the build the plan was stamped on. Observed in `claude-canvas-harvest`
+on 2026-10-12, through a GM and a player client that wrap `canvas.sounds.playAtPosition` and
+`AudioHelper.play` (crucible: 20 px spaces, 1 unit each, tokens 4 spaces wide).
+
+- **`gmAlways` is not used.** `SoundsLayer#_configurePlayback` sets the volume to exactly 1 when the
+  listener sits on the origin, dropping the volume passed in: asked for 0.3, a listener on the
+  origin got 1; half a pixel off, 0.29999. `gmAlways` puts the GM on the origin, so the GM would
+  hear every strike at full volume whatever Harvest Sounds says. A GM with no token selected now
+  plays the cue directly (`playSound`, the GM's volume, no position, no reach, no walls), which is
+  what `gmAlways` meant; every other case calls `playAtPosition` with `gmAlways: false`.
+  **Phase 3:** "a strike plays nothing on any client" must also watch `AudioHelper.play`, or the
+  GM with nothing selected slips through; `recordSounds` in `tests/live/cases.js` records both.
+- **Where a token listens.** `TokenDocument#getListenerPosition` is `getMovementOrigin`: the
+  token's centre at its elevation plus half its depth (crucible: +2). It never coincides with a
+  floor-level origin unless a token's depth is 0, so the volume-1 quirk is left to core for players.
+  The striker hears its own strike a little eased (0.27 for 0.3 asked, reach 12, 2 units up).
+- **Walls and surfaces are those of the Level the listener views.** `playAtPosition` builds its
+  source on `canvas.level` (no `sourceData.level` is passed), as core's sight does. A wall that
+  exists only on the striker's Level does not cut a strike heard from another.
+- **The reach field is a slider**, 1–60 with its value and "grid spaces" beside it and the `?`
+  help, not the shape block's `type="number"`: `canvas-harvest-visual-identity` forbids a free box
+  for a bounded number. **Phase 3:** its dialog has the same conflict, made harder by the empty
+  value that means "the world's reach", which a slider cannot show. Settle that with the maintainer
+  before building it. `.ch-unit` is styled in `styles/sound-config.css` only, scoped to that window.
+- **The strike block holds both the cues and `playStrike`**, the effect gated by `viewed` inside it.
+  **Phase 3:** gate only the two `playCueAt` calls on `soundEnabled`, not the whole block, or a
+  silenced resource also loses its animation.
+- `help()` moved from `resource-book.js` to `helpers.js`, now that two windows build tooltips.
+  The Harvest Sounds menu hint mentions the reach.
+- `tests/live/run.js` presses Shift after each login: Foundry holds every sound until a trusted
+  gesture, and `Sound#load` waits on it forever.
+- **Measured** (player, volume 0.8, reach 12 unless said): 3.5 spaces, 0.51; 20.5 spaces, `null`;
+  a wall (sound restricted) between, `null`; reach 2, `null` on the player and on the GM with the
+  token selected. Striker on the lower Level, the player's token right above on the upper one
+  (listening at 22): Define Surface floor on, reach 30, `null`; floor off, reach 30, 0.10; floor
+  off, reach 12, `null`. Striker and listener on the upper floor, the floor surface in place, 0.51.
+  GM with nothing selected: a direct play at 0.8; with the hero selected, the same volume as the
+  player. The depleted cue plays from the same origin, logged 0.86 s and 1.8 s after the blow rather
+  than 500 ms: the timer is unchanged, the software-WebGL main thread runs it late.
+- The five `sound: …` cases pass, and the 15 existing ones, 20/20, with no console error. Against
+  the code before this phase, four fail at the missing setting and the depleting case at "played
+  with no position" (it passed on the old code until its origin check was tightened). The book's
+  preview is unchanged code (`playCue` → `playSound`), read rather than run; the Harvest Sounds
+  preview was observed playing directly.
+- **Still the maintainer's call:** whether 12 spaces sounds right at the table, and how the reach
+  slider looks in both themes (its DOM was measured, not looked at).
+
 ## Start here
 
 - Open `scripts/sound.js`, `scripts/harvest-control.js` (the `updateRegionBehavior` hook in

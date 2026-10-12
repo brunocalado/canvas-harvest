@@ -79,6 +79,16 @@ export function themeClass() {
 }
 
 /**
+ * One help tooltip's HTML: a term and its explanation.
+ * @param {string} term   a localization key
+ * @param {string} hint   a localization key
+ * @returns {string}
+ */
+export function help(term, hint) {
+  return `<p><strong>${game.i18n.localize(term)}</strong><br>${game.i18n.localize(hint)}</p>`;
+}
+
+/**
  * One window per id. Core's settings menu builds a new instance on every click, and a second instance
  * with the id of an open one takes its place on screen, leaving the first alive off screen with its
  * unsaved edits. A new instance hands the render to the one already open instead.

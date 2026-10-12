@@ -5,6 +5,15 @@
     <output class="ch-volume-value">{{volume}}%</output>
   </fieldset>
 
+  <fieldset class="ch-field ch-radius">
+    <legend>{{localize "CANVASHARVEST.Sounds.Radius"}}</legend>
+    <input type="range" name="radius" min="{{radiusRange.[0]}}" max="{{radiusRange.[1]}}" step="1" value="{{radius}}">
+    <output class="ch-radius-value">{{radius}}</output>
+    <span class="ch-unit">{{localize "CANVASHARVEST.Sounds.Spaces"}}</span>
+    <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{radiusHelp}}"
+       data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="UP"></i>
+  </fieldset>
+
   {{#each cues}}
   <fieldset class="ch-field ch-sound-row">
     <legend>{{localize label}}</legend>

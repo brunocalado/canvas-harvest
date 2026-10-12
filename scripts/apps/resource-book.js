@@ -8,8 +8,8 @@
 
 import { ANIMATION_ICONS, ANIMATIONS, BOOK_APP_ID, MODULE_ID, RESOURCE_DRAG_TYPE, RESOURCE_LIMITS, TEMPLATE_PATH, THEMES } from "../constants.js";
 import {
-  bindSearch, confirmDialog, droppedItemRef, filterGroups, getCollapsed, getTheme, isWebm, liveRef, readCaret, restoreCaret, searchKey,
-  setCollapsed, SingleWindow, sourceLabel
+  bindSearch, confirmDialog, droppedItemRef, filterGroups, getCollapsed, getTheme, help, isWebm, liveRef, readCaret, restoreCaret,
+  searchKey, setCollapsed, SingleWindow, sourceLabel
 } from "../helpers.js";
 import { AmbientFX } from "../ambient-fx.js";
 import { playCue } from "../sound.js";
@@ -36,16 +36,6 @@ function groupLabel(r) {
  */
 function groupKey(r) {
   return `${r.source}::${groupLabel(r).toLocaleLowerCase()}`;
-}
-
-/**
- * One help tooltip's HTML: a term and its explanation.
- * @param {string} term   a localization key
- * @param {string} hint   a localization key
- * @returns {string}
- */
-function help(term, hint) {
-  return `<p><strong>${game.i18n.localize(term)}</strong><br>${game.i18n.localize(hint)}</p>`;
 }
 
 /**

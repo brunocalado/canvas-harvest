@@ -42,7 +42,9 @@ export const RESOURCE_LIMITS = {
   strikes: [1, 30],
   // Tags are set through the API only, never in the book: how many a resource carries, and each one's length.
   tags: 16,
-  tag: 64
+  tag: 64,
+  // Grid spaces a harvest sound carries.
+  soundRadius: [1, 60]
 };
 export const ANIMATION_ICONS = { strike: "fa-pickaxe", chop: "fa-axe", gather: "fa-hand-holding-seedling", carve: "fa-knife" };
 export const DEFAULT_RESOURCE_IMG = "icons/commodities/stone/ore-chunk-iron-black.webp";
@@ -54,6 +56,7 @@ export const STRIKE_MS = 750;
 export const HARVEST_FLIGHT = i => ({ startScale: 0.2, apexScale: 1.3, arc: 1, delay: Math.min(i * 0.15, 5) });
 
 export const SETTING_SOUND_VOLUME = "soundVolume";
+export const SETTING_SOUND_RADIUS = "soundRadius";
 export const SOUND_CUES = { strike: "soundStrike", chop: "soundChop", gather: "soundGather", carve: "soundCarve", depleted: "soundDepleted" };
 // Seconds per cycle of each theme's clock: the Wilds breeze, and Grid Crafter's forge bellows.
 export const BREEZE_PERIOD = 9;

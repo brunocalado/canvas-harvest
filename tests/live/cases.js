@@ -103,6 +103,111 @@ function resetScene({ gm, ev, ids }, light) {
     await canvas.scene.update({ "environment.globalLight.enabled": ${light} });`);
 }
 
+/**
+ * Record every harvest sound a client plays from now on: each call to core's positional player, with
+ * the volume it resolved to (null when none of this user's tokens hears it), and each direct play.
+ * A headless browser has no audio output, so this is what "heard" means in these cases.
+ * @type {string}   JS run in a client
+ */
+const recordSounds = `globalThis.chTestSounds = [];
+  const layer = canvas.sounds;
+  if ( !layer.chTestWrapped ) {
+    const play = Object.getPrototypeOf(layer).playAtPosition;
+    layer.playAtPosition = async function(src, origin, radius, options) {
+      const entry = { kind: "positional", src, origin: { ...origin }, radius, volume: null, done: false, at: performance.now() };
+      chTestSounds.push(entry);
+      const sound = await play.call(this, src, origin, radius, options);
+      Object.assign(entry, { volume: sound?.volume ?? null, done: true });
+      return sound;
+    };
+    layer.chTestWrapped = true;
+  }
+  const helper = foundry.audio.AudioHelper;
+  if ( !helper.chTestWrapped ) {
+    const play = helper.play;
+    helper.play = function(data, socketOptions) {
+      chTestSounds.push({ kind: "direct", src: data.src, volume: data.volume, done: true, at: performance.now() });
+      return play.call(this, data, socketOptions);
+    };
+    helper.chTestWrapped = true;
+  }`;
+
+/**
+ * A token of the GM's standing in a spot of its own, a number of grid spaces right of where the test
+ * token listens from.
+ * @param {object} t
+ * @param {number} spaces
+ * @param {object} [at]
+ * @param {string|null} [at.level]   the test token's Level when null
+ * @param {number} [at.elevation]
+ * @returns {Promise<{token: string, spot: string, medallion: {x: number, y: number}}>}
+ */
+function placeStriker({ gm, ev, ids }, spaces, { level = null, elevation = 0 } = {}) {
+  return ev(gm, `const hero = fromUuidSync(${JSON.stringify(ids.token)});
+    const actor = game.actors.getName("CH Test Striker") ?? await Actor.implementation.create({ name: "CH Test Striker", type: hero.actor.type });
+    const levelId = ${JSON.stringify(level)} ?? hero.level;
+    const l = hero.getListenerPosition();
+    const region = await CanvasHarvest.createSpot({ resource: ${JSON.stringify(ids.resource)}, x: l.x + (${spaces} * canvas.grid.size), y: l.y,
+      levelId, margin: Math.ceil(Math.max(actor.prototypeToken.width, actor.prototypeToken.height) / 2) });
+    const { x, y, width, height } = region.bounds;
+    const w = actor.prototypeToken.width * canvas.grid.sizeX;
+    const h = actor.prototypeToken.height * canvas.grid.sizeY;
+    const data = (await actor.getTokenDocument({ x: x + ((width - w) / 2), y: y + ((height - h) / 2) })).toObject();
+    const [token] = await canvas.scene.createEmbeddedDocuments("Token", [{ ...data, level: levelId, elevation: ${elevation} }]);
+    return { token: token.uuid, spot: region.behaviors.contents[0].uuid, medallion: { x: x + (width / 2), y: y + (height / 2) } };`);
+}
+
+/**
+ * The GM strikes a spot with a token; returns what each client played for the strike.
+ * @param {object} t
+ * @param {{token: string, spot: string}} striker
+ * @param {number} [cues]   how many cues the strike plays: 2 when it empties the spot
+ * @returns {Promise<{gm: object[], pl: object[]}>}
+ */
+async function strikeHeard(t, { token, spot }, cues = 1) {
+  const { gm, pl, ev, until } = t;
+  for ( const page of [gm, pl] ) await ev(page, `chTestSounds.length = 0;`);
+  const left = await ev(pl, `return fromUuidSync(${JSON.stringify(spot)}).system.left;`);
+  const ok = await ev(gm, `return CanvasHarvest.harvest(${JSON.stringify(token)}, ${JSON.stringify(spot)});`);
+  assert(ok === true, `the strike failed: ${await t.notes(gm)}`);
+  await until(pl, `fromUuidSync(${JSON.stringify(spot)}).system.left < ${left}`);
+  const heard = {};
+  for ( const [key, page] of Object.entries({ gm, pl }) ) {
+    try {
+      await until(page, `(chTestSounds.length >= ${cues}) && chTestSounds.every(e => e.done)`);
+    } catch {
+      throw new Error(`the ${key} client played ${await ev(page, `return JSON.stringify(chTestSounds);`)}, not ${cues} cue(s)`);
+    }
+    heard[key] = await ev(page, `return chTestSounds.map(({ kind, src, origin, radius, volume, at }) => ({ kind,
+      cue: src.split("/").pop().replace(/\\.ogg$/, ""), origin, radius, volume, at }));`);
+  }
+  return heard;
+}
+
+/**
+ * Set the reach of the harvest sounds, in grid spaces.
+ * @param {object} t
+ * @param {number} spaces
+ */
+const setReach = ({ gm, ev }, spaces) => ev(gm, `await game.settings.set("canvas-harvest", "soundRadius", ${spaces});`);
+
+/**
+ * Light the scene, so the test token's sight reaches the spots. Returns whether it was lit before.
+ * @param {object} t
+ * @returns {Promise<boolean>}
+ */
+const lightScene = ({ gm, ev }) => ev(gm, `const light = canvas.scene.environment.globalLight.enabled;
+  await canvas.scene.update({ "environment.globalLight.enabled": true });
+  return light;`);
+
+/**
+ * Remove the strikers the sound cases placed, tokens and actor.
+ * @param {object} t
+ */
+const removeStrikers = ({ gm, ev }) => ev(gm, `await canvas.scene.deleteEmbeddedDocuments("Token",
+    canvas.scene.tokens.filter(t => t.name === "CH Test Striker").map(t => t.id));
+  await game.actors.getName("CH Test Striker")?.delete();`);
+
 export const cases = [
   {
     name: "a strike spends one, drops the item and posts the card",
@@ -561,6 +666,203 @@ export const cases = [
             await game.actors.get(${JSON.stringify(striker.actor)})?.delete();`);
         }
         await resetScene(t, setup.light);
+      }
+    }
+  },
+  {
+    name: "sound: a strike is heard within earshot, not beyond it, through a wall or past a shorter reach",
+    async run(t) {
+      const { gm, pl, ev, ids } = t;
+      const token = JSON.stringify(ids.token);
+      const light = await lightScene(t);
+      const reach = await ev(gm, `return game.settings.get("canvas-harvest", "soundRadius");`);
+      try {
+        await setReach(t, 12);
+        for ( const page of [gm, pl] ) await ev(page, recordSounds);
+        await ev(pl, `fromUuidSync(${token}).object.control({ releaseOthers: true });`);
+        const near = await placeStriker(t, 3);
+        const far = await placeStriker(t, 20);
+        const elevation = await ev(gm, `return fromUuidSync(${JSON.stringify(near.token)}).elevation;`);
+
+        let heard = await strikeHeard(t, near);
+        const [cue] = heard.pl;
+        assert((heard.pl.length === 1) && (cue.kind === "positional") && (cue.volume > 0),
+          `3 spaces off, the player's client played ${JSON.stringify(heard.pl)}`);
+        assert((cue.origin.x === near.medallion.x) && (cue.origin.y === near.medallion.y) && (cue.origin.elevation === elevation),
+          `the strike played from ${JSON.stringify(cue.origin)}, not the medallion at the striker's elevation`);
+        heard = await strikeHeard(t, far);
+        assert(heard.pl[0].volume === null, `20 spaces off, past a reach of 12, the player's client played ${JSON.stringify(heard.pl)}`);
+
+        await ev(gm, `const l = fromUuidSync(${token}).getListenerPosition();
+          const x = Math.round((l.x + ${near.medallion.x}) / 2);
+          const h = 6 * canvas.grid.size;
+          await canvas.scene.createEmbeddedDocuments("Wall", [{ c: [x, l.y - h, x, l.y + h] }]);`);
+        heard = await strikeHeard(t, near);
+        assert(heard.pl[0].volume === null, `through a wall, the player's client played ${JSON.stringify(heard.pl)}`);
+        await ev(gm, `await canvas.scene.deleteEmbeddedDocuments("Wall", canvas.scene.walls.map(w => w.id));`);
+
+        await setReach(t, 2);
+        heard = await strikeHeard(t, near);
+        const distance = await ev(pl, `return canvas.grid.distance;`);
+        assert((heard.pl[0].radius === 2 * distance) && (heard.pl[0].volume === null),
+          `with a reach of 2, the player's client played ${JSON.stringify(heard.pl)}`);
+      } finally {
+        await ev(pl, `canvas.tokens.releaseAll();`);
+        await setReach(t, reach);
+        await removeStrikers(t);
+        await resetScene(t, light);
+      }
+    }
+  },
+  {
+    name: "sound: the GM hears every strike with nothing selected, or as a selected token hears it",
+    async run(t) {
+      const { gm, pl, ev, ids } = t;
+      const light = await lightScene(t);
+      const reach = await ev(gm, `return game.settings.get("canvas-harvest", "soundRadius");`);
+      try {
+        await setReach(t, 12);
+        for ( const page of [gm, pl] ) await ev(page, recordSounds);
+        await ev(pl, `fromUuidSync(${JSON.stringify(ids.token)}).object.control({ releaseOthers: true });`);
+        const near = await placeStriker(t, 3);
+        const far = await placeStriker(t, 20);
+        const volume = await ev(gm, `canvas.tokens.releaseAll(); return game.settings.get("canvas-harvest", "soundVolume");`);
+        let heard = await strikeHeard(t, far);
+        assert((heard.gm.length === 1) && (heard.gm[0].kind === "direct") && (heard.gm[0].volume === volume),
+          `with nothing selected, the GM's client played ${JSON.stringify(heard.gm)} for a strike 20 spaces from any token`);
+        await ev(gm, `fromUuidSync(${JSON.stringify(ids.token)}).object.control({ releaseOthers: true });`);
+        heard = await strikeHeard(t, near);
+        assert((heard.gm[0].kind === "positional") && (heard.gm[0].volume > 0) && (heard.gm[0].volume === heard.pl[0].volume),
+          `with the test token selected, 3 spaces off, the GM played ${JSON.stringify(heard.gm)} and the player ${JSON.stringify(heard.pl)}`);
+        heard = await strikeHeard(t, far);
+        assert(heard.gm[0].volume === null, `with the test token selected, 20 spaces off, the GM's client played ${JSON.stringify(heard.gm)}`);
+      } finally {
+        for ( const page of [gm, pl] ) await ev(page, `canvas.tokens.releaseAll();`);
+        await setReach(t, reach);
+        await removeStrikers(t);
+        await resetScene(t, light);
+      }
+    }
+  },
+  {
+    name: "sound: a depleting strike plays its cue after the blow, from the same spot",
+    async run(t) {
+      const { gm, pl, ev, ids } = t;
+      const light = await lightScene(t);
+      try {
+        for ( const page of [gm, pl] ) await ev(page, recordSounds);
+        await ev(pl, `fromUuidSync(${JSON.stringify(ids.token)}).object.control({ releaseOthers: true });`);
+        const near = await placeStriker(t, 3);
+        await ev(gm, `await fromUuidSync(${JSON.stringify(near.spot)}).update({ "system.remaining": 1 });`);
+        const heard = await strikeHeard(t, near, 2);
+        const [blow, depleted] = heard.pl;
+        assert((heard.pl.length === 2) && (blow.cue === "strike") && (depleted.cue === "depleted") && (depleted.volume > 0),
+          `the player's client played ${JSON.stringify(heard.pl)}`);
+        for ( const cue of [blow, depleted] ) {
+          assert((cue.kind === "positional") && (cue.origin.x === near.medallion.x) && (cue.origin.y === near.medallion.y),
+            `the ${cue.cue} cue played ${cue.kind === "positional" ? `from ${JSON.stringify(cue.origin)}` : "with no position"}, not from the medallion`);
+        }
+        // Timers run late under software WebGL, so only a lower bound holds.
+        assert(depleted.at - blow.at >= 450, `the depleted cue played ${Math.round(depleted.at - blow.at)} ms after the blow`);
+      } finally {
+        await ev(pl, `canvas.tokens.releaseAll();`);
+        await removeStrikers(t);
+        await resetScene(t, light);
+      }
+    }
+  },
+  {
+    name: "sound: a floor between Levels blocks a strike; without one the height counts; its own floor does not",
+    async run(t) {
+      const { gm, pl, ev, until, ids } = t;
+      const token = JSON.stringify(ids.token);
+      const light = await lightScene(t);
+      const reach = await ev(gm, `return game.settings.get("canvas-harvest", "soundRadius");`);
+      const s = await ev(gm, `const lower = canvas.level;
+        const floor = lower.elevation.top;
+        const [upper] = await canvas.scene.createEmbeddedDocuments("Level", [{ name: "CH Test Upper",
+          elevation: { bottom: floor, top: 2 * floor }, visibility: { levels: [lower.id] } }]);
+        const token = fromUuidSync(${token});
+        return { floor, lower: lower.id, upper: upper.id, x: token.x, y: token.y, elevation: token.elevation };`);
+      const lower = JSON.stringify(s.lower);
+      const upper = JSON.stringify(s.upper);
+      try {
+        await until(pl, `canvas.ready && (canvas.scene.levels.size === 2)`);
+        for ( const page of [gm, pl] ) await ev(page, recordSounds);
+        // Right under where the test token will stand, and three spaces off it on the upper floor.
+        const below = await placeStriker(t, 0);
+        const beside = await placeStriker(t, 3, { level: s.upper, elevation: s.floor });
+        // Core gives a Level no floor of its own: a Define Surface region is what separates the two.
+        await ev(gm, `const { width, height } = canvas.dimensions;
+          await canvas.scene.createEmbeddedDocuments("Region", [{ name: "CH Test Floor", levels: [${upper}],
+            elevation: { bottom: ${s.floor}, top: ${s.floor} }, shapes: [{ type: "rectangle", x: 0, y: 0, width, height }],
+            behaviors: [{ type: "defineSurface", system: { placement: "bottom" } }] }]);
+          await fromUuidSync(${token}).update({ level: ${upper}, elevation: ${s.floor} }, { animate: false });`);
+        await until(pl, `fromUuidSync(${token}).level === ${upper}`);
+        // Not awaited: the view redraws the canvas, which the case waits on instead.
+        await ev(pl, `canvas.scene.view({ level: ${upper} });`);
+        await until(pl, `canvas.ready && (canvas.level.id === ${upper}) && !!fromUuidSync(${token}).object`, 60000);
+        await ev(pl, `fromUuidSync(${token}).object.control({ releaseOthers: true });`);
+        await until(pl, `canvas.sounds.getListenerPositions().length === 1`);
+        // How far above the strike below the player's token listens, in grid spaces.
+        const height = await ev(pl, `return canvas.sounds.getListenerPositions()[0].elevation / canvas.grid.distance;`);
+
+        await setReach(t, Math.ceil(height) + 4);
+        let heard = await strikeHeard(t, below);
+        assert(heard.pl[0].volume === null, `through the floor, the player's client played ${JSON.stringify(heard.pl)}`);
+        const floorBehavior = `canvas.scene.regions.getName("CH Test Floor").behaviors.contents[0]`;
+        await ev(gm, `await ${floorBehavior}.update({ disabled: true });`);
+        heard = await strikeHeard(t, below);
+        assert(heard.pl[0].volume > 0, `with no floor, within reach, the player's client played ${JSON.stringify(heard.pl)}`);
+        await setReach(t, Math.max(1, Math.floor(height) - 1));
+        heard = await strikeHeard(t, below);
+        assert(heard.pl[0].volume === null, `with no floor, a reach shorter than the height, the player's client played ${JSON.stringify(heard.pl)}`);
+
+        await ev(gm, `await ${floorBehavior}.update({ disabled: false });`);
+        await setReach(t, 12);
+        heard = await strikeHeard(t, beside);
+        assert(heard.pl[0].volume > 0, `on the floor the player's token stands on, the player's client played ${JSON.stringify(heard.pl)}`);
+      } finally {
+        // The strikers and the floor go first: deleting the Level would take its tokens with it, and
+        // while the floor stands it blocks the token's way back down.
+        await ev(pl, `canvas.tokens.releaseAll();`);
+        await setReach(t, reach);
+        await removeStrikers(t);
+        await resetScene(t, light);
+        await ev(gm, `await fromUuidSync(${token}).update({ level: ${lower}, elevation: ${s.elevation}, x: ${s.x}, y: ${s.y} }, { animate: false });`);
+        for ( const page of [gm, pl] ) {
+          await ev(page, `if ( canvas.level?.id !== ${lower} ) canvas.scene.view({ level: ${lower} });`);
+          await until(page, `canvas.ready && (canvas.level?.id === ${lower})`, 60000);
+        }
+        await ev(gm, `await canvas.scene.deleteEmbeddedDocuments("Level", [${upper}]);`);
+      }
+    }
+  },
+  {
+    name: "sound: Harvest Sounds sets the reach, and its preview still plays directly",
+    async run(t) {
+      const { gm, ev } = t;
+      const reach = await ev(gm, `return game.settings.get("canvas-harvest", "soundRadius");`);
+      try {
+        const r = await ev(gm, `${recordSounds}
+          const wait = ms => new Promise(r => setTimeout(r, ms));
+          const app = new (game.settings.menus.get("canvas-harvest.sounds").type)();
+          await app.render({ force: true });
+          const input = app.element.querySelector("input[name='radius']");
+          input.value = 5;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          const shown = app.element.querySelector(".ch-radius-value").textContent;
+          app.element.querySelector(".ch-sound-row [data-action='preview']").click();
+          await wait(500);
+          const preview = chTestSounds.map(e => e.kind);
+          app.element.querySelector("button[type='submit']").click();
+          await wait(1000);
+          return { shown, preview, saved: game.settings.get("canvas-harvest", "soundRadius") };`);
+        assert(r.shown === "5", `the slider's value reads ${r.shown}`);
+        assert(JSON.stringify(r.preview) === JSON.stringify(["direct"]), `the preview played ${JSON.stringify(r.preview)}`);
+        assert(r.saved === 5, `the reach saved as ${r.saved}`);
+      } finally {
+        await setReach(t, reach);
       }
     }
   }

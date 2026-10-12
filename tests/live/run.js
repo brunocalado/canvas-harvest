@@ -61,6 +61,8 @@ async function login(user) {
   else await page.fill("input[name=username]", user);
   await Promise.all([page.waitForURL(/\/game/), page.click("button[name=join], button[type=submit]")]);
   await page.waitForFunction(() => globalThis.game?.ready === true, null, { timeout: 120000 });
+  // Foundry holds every sound until the first user gesture, and only a trusted key or click counts.
+  await page.keyboard.press("Shift");
   return page;
 }
 

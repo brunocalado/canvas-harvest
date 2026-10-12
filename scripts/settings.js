@@ -6,7 +6,7 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { ANIMATIONS, MODULE_ID, SETTING_RESOURCE_EDITS, SETTING_RESOURCES, SETTING_SOUND_VOLUME, SETTING_THEME, SETTING_TOOL_SETS, SETTING_TOOL_WHISPER, SOUND_CUES, THEMES } from "./constants.js";
+import { ANIMATIONS, MODULE_ID, RESOURCE_LIMITS, SETTING_RESOURCE_EDITS, SETTING_RESOURCES, SETTING_SOUND_RADIUS, SETTING_SOUND_VOLUME, SETTING_THEME, SETTING_TOOL_SETS, SETTING_TOOL_WHISPER, SOUND_CUES, THEMES } from "./constants.js";
 import { ResourceBook } from "./apps/resource-book.js";
 import { SoundConfig } from "./apps/sound-config.js";
 import { ToolSetsConfig } from "./apps/tool-sets-config.js";
@@ -105,6 +105,16 @@ export function registerSettings() {
     config: false,
     type: new foundry.data.fields.NumberField({ min: 0, max: 1, step: 0.05, nullable: false, initial: 0.8 }),
     default: 0.8
+  });
+
+  // How far the cues carry, in grid spaces: the same number reaches as far in a scene in feet as in
+  // one in metres.
+  const [minRadius, maxRadius] = RESOURCE_LIMITS.soundRadius;
+  game.settings.register(MODULE_ID, SETTING_SOUND_RADIUS, {
+    scope: "world",
+    config: false,
+    type: new foundry.data.fields.NumberField({ integer: true, min: minRadius, max: maxRadius, nullable: false, initial: 12 }),
+    default: 12
   });
 
   // An empty path means the module's own file for the cue.

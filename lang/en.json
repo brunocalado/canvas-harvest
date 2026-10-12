@@ -33,7 +33,7 @@
       "Sounds": {
         "Name": "Harvest Sounds",
         "Label": "Open Harvest Sounds",
-        "Hint": "The volume of the harvest sounds for the whole table, and the file each one plays."
+        "Hint": "The volume of the harvest sounds for the whole table, how far they carry, and the file each one plays."
       }
     },
     "Animation": {
@@ -187,7 +187,10 @@
       "carve": "Carve",
       "depleted": "Depleted",
       "Reset": "Use the module's sound",
-      "Preview": "Listen"
+      "Preview": "Listen",
+      "Radius": "Reach",
+      "Spaces": "grid spaces",
+      "RadiusHint": "How far a harvest is heard, in grid spaces. Walls and floors block it."
     }
   }
 }

@@ -11,7 +11,7 @@ import { api } from "./api.js";
 import { MODULE_ID, SPOT_TYPE } from "./constants.js";
 import { requestHarvest } from "./harvest.js";
 import { readPalette } from "./helpers.js";
-import { playCue } from "./sound.js";
+import { playCueAt } from "./sound.js";
 
 /** Side of the pre-rendered halo texture, in pixels. */
 const HALO_SIZE = 128;
@@ -525,17 +525,20 @@ export function registerHarvestControls() {
     if ( effect?.strike && resource && viewed ) control.heldState = "full";
     else if ( effect?.refill && wasDepleted && viewed ) control.heldState = "depleted";
     control.draw();
-    if ( !resource || !viewed ) return;
+    if ( !resource ) return;
     if ( effect?.strike ) {
-      const token = foundry.utils.fromUuidSync(effect.strike, { strict: false })?.object ?? null;
+      const token = foundry.utils.fromUuidSync(effect.strike, { strict: false }) ?? null;
       const depleted = !!effect.depleted;
       // One file with the three blows in it, timed to the motion; a depleting strike adds its cue on
-      // the last blow. Each client plays its own copy at its own Environment volume.
-      playCue(resource.animation, resource.sound);
-      if ( depleted ) setTimeout(() => playCue("depleted"), 500);
-      playStrike(control, token, { animation: resource.animation, depleted });
+      // the last blow. Each client plays its own copy at its own Environment volume, from the
+      // medallion at the striker's elevation: the sound starts on the floor they stand on, whatever
+      // Level this client views, and core decides who is in earshot across walls and floors.
+      const origin = { x: control.x, y: control.y, elevation: token?.elevation ?? canvas.level.elevation.base };
+      playCueAt(resource.animation, origin, { override: resource.sound });
+      if ( depleted ) setTimeout(() => playCueAt("depleted", origin), 500);
+      if ( viewed ) playStrike(control, token?.object ?? null, { animation: resource.animation, depleted });
     }
-    else if ( effect?.refill && wasDepleted ) playRefill(control);
+    else if ( effect?.refill && wasDepleted && viewed ) playRefill(control);
   });
   Hooks.on("deleteRegionBehavior", behavior => removeControl(behavior.id));
 
