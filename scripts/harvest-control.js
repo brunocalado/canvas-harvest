@@ -230,8 +230,7 @@ export class HarvestControl extends PIXI.Container {
    */
   refreshVisibility() {
     const region = this.region;
-    const onLevel = !canvas.level || region.includedInLevel(canvas.level.id);
-    const seen = onLevel && seesSpot(this);
+    const seen = region.viewed && seesSpot(this);
     if ( game.user.isGM ) this.visible = seen;
     else this.visible = seen && this.inside && !!this.behavior.system.resourceData
       && !this.behavior.disabled && !region.hidden;
@@ -520,13 +519,13 @@ export function registerHarvestControls() {
     if ( !control ) return;
     const effect = options[MODULE_ID];
     const resource = behavior.system.resourceData;
-    const onLevel = !canvas.level || control.region.includedInLevel(canvas.level.id);
+    const viewed = control.region.viewed;
     const wasDepleted = control.state === "depleted";
     // Keep the look the effect starts from; the effect itself moves to the new one.
-    if ( effect?.strike && resource && onLevel ) control.heldState = "full";
-    else if ( effect?.refill && wasDepleted && onLevel ) control.heldState = "depleted";
+    if ( effect?.strike && resource && viewed ) control.heldState = "full";
+    else if ( effect?.refill && wasDepleted && viewed ) control.heldState = "depleted";
     control.draw();
-    if ( !resource || !onLevel ) return;
+    if ( !resource || !viewed ) return;
     if ( effect?.strike ) {
       const token = foundry.utils.fromUuidSync(effect.strike, { strict: false })?.object ?? null;
       const depleted = !!effect.depleted;
