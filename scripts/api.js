@@ -162,7 +162,8 @@ export const api = {
    * @param {number} [args.x]                canvas coordinates of the centre; ignored with a token
    * @param {number} [args.y]
    * @param {Scene} [args.scene=canvas.scene]
-   * @param {string|null} [args.levelId]     the viewed Level by default
+   * @param {string|null} [args.levelId]     the viewed Level by default, every Level on a scene not on the
+   *   canvas; ignored with a token, whose Level the spot takes
    * @param {number} [args.margin=1]        grid spaces around the centre space: 1 makes a 3×3 square
    * @param {number} [args.width]           with `height`, in place of `margin`: the rectangle's size in
    * @param {number} [args.height]            whole grid spaces, 1 or more; with a token, at least its size

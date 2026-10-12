@@ -438,7 +438,7 @@ Makes a spot: a square or rectangular Region carrying the Harvest Spot behavior,
 | `resource` | `string` | | A resource id. |
 | `x`, `y` | `number` | | The centre, in canvas coordinates. On a grid it snaps to the centre of that space. Not needed with `token`. |
 | `scene` | `Scene` | `canvas.scene` | |
-| `levelId` | `string\|null` | the viewed Level | The Level the spot is on. |
+| `levelId` | `string\|null` | the viewed Level | The Level the spot is on. On a scene that is not on the canvas there is no viewed Level, and without `levelId` the spot is on every Level. With `token`, the spot takes the token's Level. |
 | `margin` | `number` | `1` | Grid spaces around the centre space. 1 makes a 3×3 square, 0 just the one space. |
 | `width`, `height` | `number` | | In place of `margin`, a rectangle of this many grid spaces across and down, each a whole number from 1 up. Pass both, and never with `margin`. |
 | `token` | `Token\|TokenDocument\|string\|null` | `null` | Attach the spot to this token: centred on it, reaching `margin` spaces past its larger side, and following it. With `width` and `height`, the rectangle is centred on the token and must be at least the token's size. |
