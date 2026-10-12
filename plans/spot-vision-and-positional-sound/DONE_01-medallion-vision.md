@@ -13,8 +13,8 @@ written. Where the premises were wrong or incomplete, observed in `claude-canvas
   a token on the upper Level (eye at elevation 22): `testVisibility` at elevations 0 and 10 below
   was `true` with no floor and `false` with the floor; at 20 it was `true` either way. A spot that
   reaches both Levels but sits under the floor (`elevation.top` 10) is hidden from the GM's token
-  above with the floor and shown when the floor's behavior is disabled. That is core's own sight;
-  it is left to the maintainer. A spot on the lower Level only never shows from the upper one,
+  above with the floor and shown when the floor's behavior is disabled. That is core's own sight,
+  and the maintainer chose to keep it (see the overview's decisions). A spot on the lower Level only never shows from the upper one,
   floor or not, because `includedInLevel` fails first.
 - **A surface at the tested point's own elevation does not block it.** `Scene#testSurfaceCollision`
   skips surfaces with `elevation <= lower.elevation`. Observed: a player's token on the upper floor,
@@ -37,6 +37,10 @@ written. Where the premises were wrong or incomplete, observed in `claude-canvas
   phase at the wall, the GM's selected token and the floor, and pass after. The sparks case already
   held for players before (the old `canSee`), and is kept as a regression check. 15/15 cases pass,
   with no console error on either client.
+- **After the phase**, in its own commit (`c645283`): the Level test is core's `region.viewed`
+  (`CanvasDocument#viewed`) in `refreshVisibility` and in the strike hook, in place of
+  `!canvas.level || region.includedInLevel(canvas.level.id)`. Same test, and false once the scene is
+  unviewed. The live suite passed 15/15 again.
 - **Still the maintainer's call:** how the medallion appears as vision reaches it. It shows and
   hides at once, with no fade.
 

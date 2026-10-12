@@ -2,8 +2,8 @@
 
 A Harvest Spot's medallion, its strike effects and its sounds follow token vision, walls and v14's
 native Levels: a player sees a medallion only when a token of theirs stands in the spot **and**
-sees the medallion; a strike is heard only by tokens within earshot, cut by walls and level
-surfaces; the GM follows the same tests while controlling a token with vision. Each resource can
+sees the medallion; a strike is heard only by tokens within earshot, cut by walls and by
+floors between Levels; the GM follows the same tests while controlling a token with vision. Each resource can
 silence its sounds or change how far they carry.
 
 Confirmed against Foundry **v14 build 369** (core source at `fvtt14/client` and `fvtt14/common`),
@@ -60,7 +60,8 @@ setting.
   nearest listener of `getListenerPositions()`, and plays once on `game.audio.environment`.
   Radius is in scene distance units. With `walls: true`, `_configurePlayback` treats the sound as
   "Blocked by walls and surfaces"; `PointSoundSource#getVolumeMultiplier` also fades it with the
-  vertical distance. `gmAlways` (default true) makes a GM hear it at full volume from the origin.
+  vertical distance. A surface is a Region with a `defineSurface` behavior (`Scene#getSurfaces`);
+  a Level has none of its own (found in phase 1). `gmAlways` (default true) makes a GM hear it at full volume from the origin.
 - `RegionDocument` prepares `elevation.bottom ??= -Infinity` (and top to `+Infinity`).
   `canvas.grid.distance` is `BaseGrid#distance`.
 
@@ -82,6 +83,14 @@ setting.
 - *Radius in grid spaces*, default 12, converted per scene with `canvas.grid.distance`. A default in
   feet or metres means a different thing in every scene. **Lost:** distance units (core's own unit).
 - *A resource's toggle silences everything it plays*: strike and depleted cues.
+- *Floors between Levels are core's: a Define Surface region the map maker draws.* Without one,
+  sight and sound pass between Levels for tokens too, and a medallion or a strike follows the same
+  rule. The Level test is core's `region.viewed`. The maintainer chose this after phase 1, on
+  2026-10-12. **Lost:** a module rule hiding a spot whose elevation range does not reach the viewed
+  Level (a special case core does not make for its tokens); and drawing the medallion as a Tile, as
+  Canvas Loot draws its items. Core tests a Tile against vision no more than a control (Canvas Loot
+  needed the same overlay, the same `testVisibility` and a `sightRefresh` hook, plus hiding core's
+  mesh), and a Tile has no `attachment`, no elevation range and no "token inside" test.
 
 ## Collisions
 

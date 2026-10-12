@@ -9,7 +9,8 @@
   `templates/book.hbs` (the sound button), `styles/book.css`, `lang/en.json`, `docs/API.md`
   (the resource reference table, rows `verb`…`strikes`), `README.md`, `CHANGELOG.md`.
 - Phase 2 is renamed `DONE_02-positional-sound.md`; read its Departures (`playCueAt`'s signature
-  and `RESOURCE_LIMITS.soundRadius` are used here).
+  and `RESOURCE_LIMITS.soundRadius` are used here). The live suite needs `CHROME_PATH` (see
+  `DONE_01-medallion-vision.md`).
 - Read `canvas-harvest-visual-identity` before touching the dialog: the toggle is its
   `.ch-toggle` switch, already used in `book.hbs` for Tool Sets.
 - `git status` clean before the first edit.

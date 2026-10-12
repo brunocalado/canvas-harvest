@@ -6,7 +6,13 @@
   `registerHarvestControls`), `scripts/settings.js`, `scripts/constants.js`,
   `scripts/apps/sound-config.js`, `templates/sound-config.hbs`, `styles/sound-config.css`,
   `lang/en.json` (`CANVASHARVEST.Sounds`), `README.md` (the Harvest Sounds paragraph).
-- Phase 1 is renamed `DONE_01-medallion-vision.md`; read its Departures.
+- Phase 1 is renamed `DONE_01-medallion-vision.md`; read its Departures: a floor between Levels
+  is a Define Surface region, never the Level itself, and the live suite needs `CHROME_PATH` and
+  removes a floor before moving a token back through it.
+- Who listens, read in build 369 after phase 1: with token vision on,
+  `SoundsLayer#getListenerPositions` takes only the active vision sources, and
+  `Token#_isVisionSource` keeps those to tokens on the viewed Level. A player with no sighted token
+  on the viewed Level hears nothing, lit scene or not; a blinded token still listens.
 - APIs confirmed on v14 build 369 (`SoundsLayer#playAtPosition`, `Sound#playAtPosition`,
   `SoundsLayer#getListenerPositions`, `_configurePlayback`); re-read them if the build moved.
 - `git status` clean before the first edit.
@@ -34,7 +40,8 @@ game.settings.register(MODULE_ID, SETTING_SOUND_RADIUS, {
 ```js
 /**
  * Play a cue from a point on the map for this client: heard only by this user's listening
- * tokens within reach, blocked by walls and level surfaces. Nothing is created on the map.
+ * tokens within reach, blocked by walls and by floors (Define Surface regions). Nothing is
+ * created on the map.
  * @param {"strike"|"chop"|"gather"|"carve"|"depleted"} cue
  * @param {ElevatedPoint} origin
  * @param {object} [options]
@@ -51,8 +58,9 @@ export function playCueAt(cue, origin, { override = "", spaces } = {}) {
 }
 ```
 
-The hook: the sound no longer waits on `onLevel` — whoever is within earshot hears it, and core
-decides across levels. The visual effect still needs the region on the viewed level.
+The hook: the sound no longer waits on `viewed` (`control.region.viewed`, the Level test phase 1
+moved to) — whoever is within earshot hears it, and core decides across levels. The visual effect
+still needs the region on the viewed level.
 
 ```js
 if ( !resource ) return;
@@ -64,7 +72,7 @@ if ( effect?.strike ) {
   playCueAt(resource.animation, origin, { override: resource.sound });
   if ( effect.depleted ) setTimeout(() => playCueAt("depleted", origin), 500);
 }
-if ( !onLevel ) return;
+if ( !viewed ) return;
 // …playStrike / playRefill as before, with token = tokenDoc?.object ?? null
 ```
 
@@ -97,8 +105,9 @@ reading the resolved `Sound` (`playAtPosition` returns `null` when the volume is
 | Player's token 3 spaces from a spot, no wall: the strike plays on the player client with volume > 0 | returned `Sound` is `null` |
 | Player's token 20 spaces away (default 12): nothing plays | a `Sound` is returned |
 | A wall (sound restriction on) between the player's token and the spot: nothing plays | a `Sound` is returned |
-| Striker on Level A, player's token right above on Level B with a floor surface between: nothing plays | a `Sound` is returned — **verify first**; if core lets it through, record it as a departure and ask the maintainer |
-| Striker and listener on the same level, same floor elevation: audible (the origin is not swallowed by its own floor surface) | `null` — **verify first** |
+| Striker on Level A, player's token right above on Level B with a Define Surface floor (sound on) between: nothing plays | a `Sound` is returned — **verify first**; if core lets it through, record it as a departure and ask the maintainer |
+| The same Levels with no Define Surface floor: nothing blocks, and the height counts toward the reach | a `Sound` for a listener beyond the radius once the height is counted, or `null` for one within it — **verify first**: this is core's rule, as phase 1 follows for sight |
+| Striker and listener on the same level, same floor elevation, a Define Surface floor at that elevation: audible (the origin is not swallowed by its own floor) | `null` — **verify first**. Phase 1 read `Scene#testSurfaceCollision`: equal elevations return no collision at once, and a surface at the lower point's own elevation is skipped |
 | GM with nothing selected hears every strike at full volume; GM with a token selected hears as that token | GM readings disagree |
 | Radius saved in Harvest Sounds changes the reach on the next strike, on every client | old reach still applies |
 | A depleting strike plays the depleted cue from the same spot, 500 ms later | not played, or played without position |
@@ -111,7 +120,7 @@ reading the resolved `Sound` (`playAtPosition` returns `null` when the volume is
 1. `Play harvest sounds from the spot, within earshot and cut by walls and levels` — body: every
    client used to hear every strike at full volume wherever it was; the cues now play through
    core's positional sound from the medallion at the striker's elevation, blocked by walls and
-   level surfaces, with a reach in grid spaces set in Harvest Sounds (12 by default). Includes the
+   by floors between Levels, with a reach in grid spaces set in Harvest Sounds (12 by default). Includes the
    README Harvest Sounds paragraph, a CHANGELOG `# Unreleased` entry, and the rename to `DONE_02-…`.
 
 ## What this deliberately does not do
