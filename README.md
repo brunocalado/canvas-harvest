@@ -91,8 +91,11 @@ with every one of them, the items of each Tool Set included.
 ![A token mining an Iron Vein: the Mine button over the vein, the stones on the floor around the token, and the chat card](docs/harvest.webp)
 
 A card in the chat says who harvested what and how many strikes are left. Players only see the
-button of the spot their token stands in. The GM sees every spot on the scene, dimmed until one of
-their tokens stands in it, and a red warning on a spot whose resource was deleted.
+button of the spot their token stands in, and only while that token can see the button itself, in
+the middle of the spot. A wall in the way, darkness the token has no darkvision for, the Blinded
+status or a floor between them hides it, and so do the sparks of a strike there. The GM sees every
+spot on the scene, dimmed until one of their tokens stands in it, and a red warning on a spot whose
+resource was deleted. While the GM has a token selected, they see only the spots that token can see.
 
 ## Settings
 

@@ -54,6 +54,55 @@ const dropItem = (target, uuid) => `{ const dt = new DataTransfer();
   ${target}.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
   await new Promise(r => setTimeout(r, 800)); }`;
 
+/** The medallion a client drew for a region, as a JS expression run there. */
+const medallion = id => `canvas.controls.children.flatMap(c => c.children ?? []).find(c => c.region?.id === ${JSON.stringify(id)})`;
+
+/**
+ * Wait until a client shows or hides a region's medallion, or fail saying what the case had set up.
+ * @param {object} t
+ * @param {import("playwright").Page} page
+ * @param {string} id       the region's id
+ * @param {boolean} shown
+ * @param {string} where
+ */
+async function expectShown({ until }, page, id, shown, where) {
+  try {
+    await until(page, `${medallion(id)}?.visible === ${shown}`);
+  } catch {
+    throw new Error(`${where}: the medallion stayed ${shown ? "hidden" : "shown"}`);
+  }
+}
+
+/**
+ * Light the scene and make a spot the test token stands at one end of, its medallion two token
+ * widths off, so a wall fits between the two.
+ * @param {object} t
+ * @returns {Promise<{region: string, spot: string, wall: number[], light: boolean}>}
+ */
+function wideSpot({ gm, ev, ids }) {
+  return ev(gm, `const light = canvas.scene.environment.globalLight.enabled;
+    await canvas.scene.update({ "environment.globalLight.enabled": true });
+    const token = fromUuidSync(${JSON.stringify(ids.token)});
+    const c = token.getCenterPoint();
+    const size = canvas.grid.size;
+    const off = 2 * token.object.w;
+    const region = await CanvasHarvest.createSpot({ resource: ${JSON.stringify(ids.resource)}, x: c.x + off, y: c.y,
+      width: Math.ceil((2 * off) / size) + 2, height: Math.ceil(token.object.h / size) + 2 });
+    return { region: region.id, spot: region.behaviors.contents[0].uuid, light,
+      wall: [c.x + (off / 2), c.y - off, c.x + (off / 2), c.y + off].map(Math.round) };`);
+}
+
+/**
+ * Put the test scene back as the fixture left it: its one spot, no walls, the light as it was.
+ * @param {object} t
+ * @param {boolean} light
+ */
+function resetScene({ gm, ev, ids }, light) {
+  return ev(gm, `await canvas.scene.deleteEmbeddedDocuments("Wall", canvas.scene.walls.map(w => w.id));
+    await canvas.scene.deleteEmbeddedDocuments("Region", canvas.scene.regions.filter(r => r.id !== ${JSON.stringify(ids.region)}).map(r => r.id));
+    await canvas.scene.update({ "environment.globalLight.enabled": ${light} });`);
+}
+
 export const cases = [
   {
     name: "a strike spends one, drops the item and posts the card",
@@ -334,6 +383,185 @@ export const cases = [
         return after;`);
       assert(r.resource === "chTestMissing001", `the resource became ${JSON.stringify(r.resource)}`);
       assert(r.remaining === 3, `the strikes left became ${r.remaining}`);
+    }
+  },
+  {
+    name: "vision: a player sees a medallion only where their token sees it",
+    async run(t) {
+      const { gm, pl, ev, ids } = t;
+      const token = JSON.stringify(ids.token);
+      const range = await ev(gm, `return fromUuidSync(${token}).sight.range;`);
+      const setup = await wideSpot(t);
+      const shown = (state, where) => expectShown(t, pl, setup.region, state, where);
+      try {
+        await ev(pl, `fromUuidSync(${token}).object.control({ releaseOthers: true });`);
+        await shown(true, "the token stands in the spot, the medallion in plain sight");
+        await ev(gm, `await canvas.scene.createEmbeddedDocuments("Wall", [{ c: ${JSON.stringify(setup.wall)} }]);`);
+        await shown(false, "a wall stands between the token and the medallion");
+        await ev(gm, `await canvas.scene.deleteEmbeddedDocuments("Wall", canvas.scene.walls.map(w => w.id));`);
+        await shown(true, "the wall is gone");
+        await ev(gm, `await canvas.scene.update({ "environment.globalLight.enabled": false });`);
+        await shown(false, "the scene is unlit and the token has no darkvision");
+        await ev(gm, `await fromUuidSync(${token}).update({ "sight.range": 30 * canvas.grid.distance });`);
+        await shown(true, "the token has darkvision");
+        await ev(gm, `await fromUuidSync(${token}).update({ "sight.range": ${range} });
+          await canvas.scene.update({ "environment.globalLight.enabled": true });`);
+        await shown(true, "the scene is lit again");
+        await ev(gm, `await fromUuidSync(${token}).actor.toggleStatusEffect(CONFIG.specialStatusEffects.BLIND, { active: true });`);
+        await shown(false, "the token is blinded");
+      } finally {
+        await ev(gm, `const token = fromUuidSync(${token});
+          await token.actor.toggleStatusEffect(CONFIG.specialStatusEffects.BLIND, { active: false });
+          await token.update({ "sight.range": ${range} });`);
+        await resetScene(t, setup.light);
+      }
+    }
+  },
+  {
+    name: "vision: the GM sees every spot, or what a selected token sees",
+    async run(t) {
+      const { gm, ev, ids } = t;
+      const setup = await wideSpot(t);
+      try {
+        const r = await ev(gm, `const wait = ms => new Promise(r => setTimeout(r, ms));
+          const token = fromUuidSync(${JSON.stringify(ids.token)});
+          const c = token.getCenterPoint();
+          // A spot beside the token, which it sees without standing in it.
+          const aside = await CanvasHarvest.createSpot({ resource: ${JSON.stringify(ids.resource)}, x: c.x - (2 * token.object.w), y: c.y, margin: 0 });
+          await canvas.scene.createEmbeddedDocuments("Wall", [{ c: ${JSON.stringify(setup.wall)} }]);
+          const spots = { near: ${JSON.stringify(ids.region)}, far: ${JSON.stringify(setup.region)}, aside: aside.id };
+          const read = () => Object.fromEntries(Object.entries(spots).map(([key, id]) => {
+            const m = canvas.controls.children.flatMap(c => c.children ?? []).find(c => c.region?.id === id);
+            return [key, { visible: m.visible, alpha: m.alpha,
+              sees: canvas.visibility.testVisibility({ x: m.x, y: m.y }, { tolerance: m.radius / 2 }) }];
+          }));
+          canvas.tokens.releaseAll(); await wait(800);
+          const none = read();
+          token.object.control({ releaseOthers: true }); await wait(1000);
+          const selected = read();
+          canvas.tokens.releaseAll();
+          return { none, selected };`);
+        for ( const [key, m] of Object.entries(r.none) ) {
+          assert(m.visible && (m.alpha < 1), `with nothing selected, the ${key} spot reads ${JSON.stringify(m)}`);
+        }
+        const { near, far, aside } = r.selected;
+        assert(near.visible && (near.alpha === 1), `the spot the token stands in reads ${JSON.stringify(near)}`);
+        assert(!far.visible, "the spot behind the wall is shown");
+        assert(aside.visible && (aside.alpha < 1), `the spot the token sees but stands out of reads ${JSON.stringify(aside)}`);
+        for ( const [key, m] of Object.entries(r.selected) ) {
+          assert(m.visible === m.sees, `the ${key} spot is ${m.visible ? "shown" : "hidden"}, but the token ${m.sees ? "sees" : "doesn't see"} it`);
+        }
+      } finally {
+        await resetScene(t, setup.light);
+      }
+    }
+  },
+  {
+    name: "vision: a medallion is hidden from another Level and under a floor, shown on its own floor",
+    async run(t) {
+      const { gm, pl, ev, until, ids } = t;
+      const token = JSON.stringify(ids.token);
+      const s = await ev(gm, `const light = canvas.scene.environment.globalLight.enabled;
+        await canvas.scene.update({ "environment.globalLight.enabled": true });
+        const lower = canvas.level;
+        const floor = lower.elevation.top;
+        const [upper] = await canvas.scene.createEmbeddedDocuments("Level", [{ name: "CH Test Upper",
+          elevation: { bottom: floor, top: 2 * floor }, visibility: { levels: [lower.id] } }]);
+        const token = fromUuidSync(${token});
+        return { light, floor, lower: lower.id, upper: upper.id, x: token.x, y: token.y, elevation: token.elevation };`);
+      const lower = JSON.stringify(s.lower);
+      const upper = JSON.stringify(s.upper);
+      try {
+        await until(pl, `canvas.ready && (canvas.scene.levels.size === 2)`);
+        await ev(pl, `fromUuidSync(${token}).object.control({ releaseOthers: true });`);
+        await expectShown(t, pl, ids.region, true, "the token stands in the spot on its Level, a Level above nobody views");
+        // Not awaited: the view redraws the canvas, which the case waits on instead.
+        await ev(pl, `canvas.scene.view({ level: ${upper} });`);
+        await until(pl, `canvas.ready && (canvas.level.id === ${upper})`, 60000);
+        await expectShown(t, pl, ids.region, false, "the player views the Level above");
+
+        // Core gives a Level no floor of its own: a Define Surface region is what stops sight between
+        // the two. One spot reaches both Levels but stays under that floor, one reaches up through it.
+        const r = await ev(gm, `const levels = [${lower}, ${upper}];
+          const token = fromUuidSync(${token});
+          const c = token.getCenterPoint();
+          const { width, height } = canvas.dimensions;
+          await canvas.scene.createEmbeddedDocuments("Region", [{ name: "CH Test Floor", levels: [${upper}],
+            elevation: { bottom: ${s.floor}, top: ${s.floor} }, shapes: [{ type: "rectangle", x: 0, y: 0, width, height }],
+            behaviors: [{ type: "defineSurface", system: { placement: "bottom" } }] }]);
+          const below = await CanvasHarvest.createSpot({ resource: ${JSON.stringify(ids.resource)}, x: c.x + (2 * token.object.w), y: c.y, margin: 1 });
+          await below.update({ levels, elevation: { bottom: null, top: ${s.floor} / 2 } });
+          const tall = await CanvasHarvest.createSpot({ resource: ${JSON.stringify(ids.resource)}, x: c.x, y: c.y, margin: 2 });
+          await tall.update({ levels });
+          await token.update({ level: ${upper}, elevation: ${s.floor} }, { animate: false });
+          return { below: below.id, tall: tall.id };`);
+        await until(pl, `fromUuidSync(${token}).object?.document.level === ${upper}`);
+        await ev(pl, `fromUuidSync(${token}).object.control({ releaseOthers: true });`);
+        await expectShown(t, pl, r.tall, true, "the player's token stands on the floor, in a spot reaching up through it");
+        await ev(gm, `canvas.scene.view({ level: ${upper}, controlledTokens: [fromUuidSync(${token}).id] });`);
+        await until(gm, `canvas.ready && (canvas.level.id === ${upper}) && (canvas.tokens.controlled.length === 1)`, 60000);
+        await expectShown(t, gm, r.tall, true, "the GM's token stands on the floor, in a spot reaching up through it");
+        await expectShown(t, gm, r.below, false, "the GM's token looks down at a spot under the floor");
+        await ev(gm, `await canvas.scene.regions.getName("CH Test Floor").behaviors.contents[0].update({ disabled: true });`);
+        await expectShown(t, gm, r.below, true, "the floor is switched off");
+      } finally {
+        // The floor goes first: while it stands it blocks the token's way back down, and deleting
+        // the Level would take the token with it.
+        await ev(gm, `canvas.tokens.releaseAll();`);
+        await resetScene(t, s.light);
+        await ev(gm, `await fromUuidSync(${token}).update({ level: ${lower}, elevation: ${s.elevation}, x: ${s.x}, y: ${s.y} }, { animate: false });`);
+        for ( const page of [gm, pl] ) {
+          await ev(page, `if ( canvas.level?.id !== ${lower} ) canvas.scene.view({ level: ${lower} });`);
+          await until(page, `canvas.ready && (canvas.level?.id === ${lower})`, 60000);
+        }
+        await ev(gm, `await canvas.scene.deleteEmbeddedDocuments("Level", [${upper}]);`);
+      }
+    }
+  },
+  {
+    name: "vision: a strike throws sparks only for a player who sees the spot",
+    async run(t) {
+      const { gm, pl, ev, until, wait, ids } = t;
+      const token = JSON.stringify(ids.token);
+      const setup = await wideSpot(t);
+      const spot = JSON.stringify(setup.spot);
+      let striker = null;
+      try {
+        // A token at the medallion's end of the spot, which the player neither owns nor sees through.
+        striker = await ev(gm, `const token = fromUuidSync(${token});
+          const actor = await Actor.implementation.create({ name: "CH Test Striker", type: token.actor.type });
+          const m = ${medallion(setup.region)};
+          const w = actor.prototypeToken.width * canvas.grid.sizeX;
+          const h = actor.prototypeToken.height * canvas.grid.sizeY;
+          const data = (await actor.getTokenDocument({ x: m.x - (w / 2), y: m.y - (h / 2) })).toObject();
+          const [striker] = await canvas.scene.createEmbeddedDocuments("Token", [data]);
+          return { token: striker.uuid, actor: actor.id };`);
+        await ev(pl, `fromUuidSync(${token}).object.control({ releaseOthers: true });`);
+        await ev(gm, `await canvas.scene.createEmbeddedDocuments("Wall", [{ c: ${JSON.stringify(setup.wall)} }]);`);
+        await expectShown(t, pl, setup.region, false, "a wall stands between the player's token and the medallion");
+        // The particles the player's client threw during one strike by the other token.
+        const strike = async () => {
+          const spawned = `canvas.controls.children.find(c => "spawned" in c).spawned`;
+          const before = await ev(pl, `return ${spawned};`);
+          const left = await ev(pl, `return fromUuidSync(${spot}).system.left;`);
+          const ok = await ev(gm, `return CanvasHarvest.harvest(${JSON.stringify(striker.token)}, ${spot});`);
+          assert(ok === true, `the strike failed: ${await t.notes(gm)}`);
+          await until(pl, `fromUuidSync(${spot}).system.left < ${left}`);
+          // The three blows play over STRIKE_MS after the update lands.
+          await wait(1500);
+          return (await ev(pl, `return ${spawned};`)) - before;
+        };
+        assert(await strike() === 0, "sparks flew on the client of a player who cannot see the spot");
+        await ev(gm, `await canvas.scene.deleteEmbeddedDocuments("Wall", canvas.scene.walls.map(w => w.id));`);
+        await expectShown(t, pl, setup.region, true, "the wall is gone");
+        assert(await strike() > 0, "no sparks flew for a player who sees the spot");
+      } finally {
+        if ( striker ) {
+          await ev(gm, `await fromUuidSync(${JSON.stringify(striker.token)})?.delete();
+            await game.actors.get(${JSON.stringify(striker.actor)})?.delete();`);
+        }
+        await resetScene(t, setup.light);
+      }
     }
   }
 ];

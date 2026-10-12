@@ -13,7 +13,7 @@ Confirmed against Foundry **v14 build 369** (core source at `fvtt14/client` and 
 
 | # | File | Commit |
 |---|---|---|
-| 1 | [01-medallion-vision.md](01-medallion-vision.md) | Hide spot medallions where the viewer's tokens cannot see |
+| 1 | [DONE_01-medallion-vision.md](DONE_01-medallion-vision.md) | Hide spot medallions where the viewer's tokens cannot see |
 | 2 | [02-positional-sound.md](02-positional-sound.md) | Play harvest sounds from the spot, within earshot and cut by walls and levels |
 | 3 | [03-per-resource-sound.md](03-per-resource-sound.md) | Let a resource silence its sounds or set how far they carry |
 

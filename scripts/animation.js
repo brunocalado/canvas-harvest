@@ -7,6 +7,7 @@
  */
 
 import { BELLOWS_PERIOD, BREEZE_PERIOD, MODULE_ID, STRIKE_MS } from "./constants.js";
+import { seesSpot } from "./harvest-control.js";
 import { getTheme, readPalette } from "./helpers.js";
 
 const CanvasAnimation = () => foundry.canvas.animation.CanvasAnimation;
@@ -334,17 +335,6 @@ export function getSpotFX() {
 /* -------------------------------------------- */
 
 /**
- * Whether this client may see effects at a point: a player whose tokens can't see it gets none, or
- * sparks through the fog would give the spot away.
- * @param {{x: number, y: number}} point
- * @returns {boolean}
- */
-function canSee(point) {
-  if ( game.user.isGM || !canvas.visibility?.tokenVision ) return true;
-  return canvas.visibility.testVisibility(point, { tolerance: 0 });
-}
-
-/**
  * Pose the medallion's body at a moment of one blow.
  * @param {PIXI.Container} body
  * @param {string} animation
@@ -481,7 +471,7 @@ async function fadeTint(control, from, to, duration) {
  */
 export async function playStrike(control, token, { animation, depleted = false }) {
   const calm = canvas.photosensitiveMode;
-  const spotFX = canSee(control.position) ? getSpotFX() : null;
+  const spotFX = seesSpot(control) ? getSpotFX() : null;
   const body = control.body;
   const fired = new Set();
   const lunge = (token && !calm) ? moveToken(token, { x: control.x, y: control.y }, animation) : null;
@@ -529,7 +519,7 @@ export async function playStrike(control, token, { animation, depleted = false }
  * @param {HarvestControl} control
  */
 export async function playRefill(control) {
-  const spotFX = canSee(control.position) ? getSpotFX() : null;
+  const spotFX = seesSpot(control) ? getSpotFX() : null;
   spotFX?.burst(control.position, { kind: "motes", count: 24, radius: control.radius, converge: true });
   await new Promise(resolve => setTimeout(resolve, 500));
   if ( control.destroyed ) return;

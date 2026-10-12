@@ -1,5 +1,45 @@
 # Phase 1 — Medallions and strike effects follow token vision, walls and Levels
 
+## Departures
+
+Landed on v14 build 369, the build the plan was stamped on. The code is the shape block as
+written. Where the premises were wrong or incomplete, observed in `claude-canvas-harvest` on
+2026-10-12:
+
+- **A Level has no floor of its own.** `Scene#getSurfaces` (`#updateSurfaces`) builds surfaces only
+  from Regions that carry a `defineSurface` behavior. The overview's "level surfaces between them
+  block sight" holds only where the map has a Define Surface region. The raised-floor invariant was
+  checked with one (a flat region at the upper Level's bottom, `placement: "bottom"`). Measured from
+  a token on the upper Level (eye at elevation 22): `testVisibility` at elevations 0 and 10 below
+  was `true` with no floor and `false` with the floor; at 20 it was `true` either way. A spot that
+  reaches both Levels but sits under the floor (`elevation.top` 10) is hidden from the GM's token
+  above with the floor and shown when the floor's behavior is disabled. That is core's own sight;
+  it is left to the maintainer. A spot on the lower Level only never shows from the upper one,
+  floor or not, because `includedInLevel` fails first.
+- **A surface at the tested point's own elevation does not block it.** `Scene#testSurfaceCollision`
+  skips surfaces with `elevation <= lower.elevation`. Observed: a player's token on the upper floor,
+  standing in a spot that reaches through it, sees the medallion with the floor surface in place.
+  Phase 2's "origin not swallowed by its own floor" premise rests on the same line.
+- **Only tokens on the viewed Level see.** `Token#_isVisionSource` returns false when
+  `document.level !== canvas.level.id`, and the redraw on a view change releases tokens on other
+  Levels. A player who switches the view to Level B therefore has no vision source and no token in
+  the spot. The medallion is hidden by all three tests, not only by the Level test.
+- **Unlit scenes hide every player medallion.** With global light off and `sight.range: 0`
+  (crucible's default token, and the `tests/live` fixture scene), players no longer see any
+  medallion. That is the intended rule, but every world with unlit scenes and tokens without
+  darkvision changes on update.
+- **Test fixtures.** `TokenDocument` constrains an update's movement by walls and surfaces and drops
+  a move it cannot make, and deleting a Level deletes the tokens on it. The Levels case removes the
+  floor before moving the token back down, or a failed run takes the token with it. `tests/`
+  pins Playwright 1.47.2, whose Chromium (1134) is not installed here; the suite ran with
+  `CHROME_PATH=/root/.cache/ms-playwright/chromium-1247/chrome-linux64/chrome`.
+- The four new cases (`vision: …` in `tests/live/cases.js`) fail against the code before this
+  phase at the wall, the GM's selected token and the floor, and pass after. The sparks case already
+  held for players before (the old `canSee`), and is kept as a regression check. 15/15 cases pass,
+  with no console error on either client.
+- **Still the maintainer's call:** how the medallion appears as vision reaches it. It shows and
+  hides at once, with no fade.
+
 ## Start here
 
 - Open `scripts/harvest-control.js` (`HarvestControl#refreshState`, `registerHarvestControls`),
@@ -105,7 +145,3 @@ token vision on; the new cases go in `tests/live/cases.js`.
   position-based. Vision is a client-side display rule; a player who cannot see the button cannot
   click it. Making the GM validate sight would be a trust-boundary change for a different plan.
 - No sound changes: phase 2.
-
-## Departures
-
-(empty until the phase lands)

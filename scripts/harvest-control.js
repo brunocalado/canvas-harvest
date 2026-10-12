@@ -69,6 +69,25 @@ function standsIn(token, region) {
 }
 
 /**
+ * Whether this client's tokens see a spot's medallion. Core never tests what sits in canvas.controls
+ * against vision (DoorControl does it for doors), so without this a medallion showed behind walls,
+ * in darkness and on a blinded token. No sighted token: testVisibility answers true for a GM and
+ * false for a player, which is the GM rule we want.
+ * @param {HarvestControl} control
+ * @returns {boolean}
+ */
+export function seesSpot(control) {
+  if ( !canvas.visibility.tokenVision ) return true;
+  // The floor of the viewed Level, raised to where the region starts when it starts higher (a
+  // balcony): core compares this elevation with each vision source's, and a surface between them
+  // blocks sight. Surfaces come from Define Surface regions; a Level has none of its own.
+  const { bottom, top } = control.region.elevation;
+  const elevation = Math.clamp(canvas.level.elevation.base, bottom, top);
+  return canvas.visibility.testVisibility({ x: control.x, y: control.y, elevation },
+    { tolerance: control.radius / 2 });
+}
+
+/**
  * The button of one Harvest Spot, living in canvas.controls like core's DoorControl: the controls
  * layer is always interactive, where a Region only receives pointer events on the Regions layer.
  */
@@ -190,25 +209,32 @@ export class HarvestControl extends PIXI.Container {
     const region = this.region;
     const spot = this.behavior.system;
     const resource = spot.resourceData;
-    const onLevel = !canvas.level || region.includedInLevel(canvas.level.id);
     // The token a spot is attached to stands in it but never works it (checkHarvest refuses it).
-    const inside = canvas.tokens.controlled.some(t => (t.document !== region.attachment?.token) && standsIn(t, region));
+    this.inside = canvas.tokens.controlled.some(t => (t.document !== region.attachment?.token) && standsIn(t, region));
     this.state = !resource ? "warning" : ((spot.left === 0) ? "depleted" : "full");
     // Whether a click strikes: a full spot, enabled, with one of this user's tokens standing in it.
-    this.ready = (this.state === "full") && inside && !this.behavior.disabled;
-    if ( game.user.isGM ) {
-      this.visible = onLevel;
-      this.alpha = this.behavior.disabled ? DISABLED_ALPHA : (inside ? 1 : DIM_ALPHA);
-    }
-    else {
-      this.visible = onLevel && inside && !!resource && !this.behavior.disabled && !region.hidden;
-      this.alpha = 1;
-    }
+    this.ready = (this.state === "full") && this.inside && !this.behavior.disabled;
+    this.refreshVisibility();
+    if ( game.user.isGM ) this.alpha = this.behavior.disabled ? DISABLED_ALPHA : (this.inside ? 1 : DIM_ALPHA);
+    else this.alpha = 1;
     // A depleted spot doesn't answer players; the GM keeps it, to refill it.
     this.eventMode = ((this.state === "depleted") && !game.user.isGM) ? "none" : "static";
     this.cursor = (this.eventMode === "static") ? "pointer" : null;
     if ( this.imageSrc !== resource?.img ) this.#loadImage(resource?.img);
     this.paint();
+  }
+
+  /**
+   * Show or hide the medallion for this client, without repainting it: a sight refresh runs this on
+   * every medallion. A player sees it only from a token standing in the spot.
+   */
+  refreshVisibility() {
+    const region = this.region;
+    const onLevel = !canvas.level || region.includedInLevel(canvas.level.id);
+    const seen = onLevel && seesSpot(this);
+    if ( game.user.isGM ) this.visible = seen;
+    else this.visible = seen && this.inside && !!this.behavior.system.resourceData
+      && !this.behavior.disabled && !region.hidden;
   }
 
   /** Draw the ring, the halo, the mark and the pill for the current (or held) state. */
@@ -515,6 +541,12 @@ export function registerHarvestControls() {
   Hooks.on("deleteRegionBehavior", behavior => removeControl(behavior.id));
 
   Hooks.on("controlToken", () => refreshSpots());
+  // Core re-tests its doors here; a token's light, a wall, a status or darkvision may change what
+  // reaches a medallion without any token moving.
+  Hooks.on("sightRefresh", () => {
+    if ( !container ) return;
+    for ( const control of controls.values() ) control.refreshVisibility();
+  });
   // Only the tokens this user controls decide what this user sees. Leaving shows at once; arriving
   // waits for the walk to end.
   Hooks.on("updateToken", tokenDoc => {

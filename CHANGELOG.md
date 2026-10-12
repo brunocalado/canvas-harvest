@@ -1,3 +1,7 @@
+# Unreleased
+
+- [Fixed] A Harvest Spot's button and the sparks of a strike only show where your tokens can see them: a wall, darkness without darkvision, the Blinded status or a floor between Levels hides them. A GM with a token selected sees what that token sees.
+
 # 0.0.1
 
 - [Added] Harvest Spots: Regions on the map where a token mines, chops, gathers or carves, with a button over the spot and a set number of strikes.
