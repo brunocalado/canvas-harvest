@@ -865,5 +865,152 @@ export const cases = [
         await setReach(t, reach);
       }
     }
+  },
+  {
+    name: "sound: a silenced resource plays nothing on any client, depleted cue included",
+    async run(t) {
+      const { gm, pl, ev, ids, wait } = t;
+      const light = await lightScene(t);
+      try {
+        for ( const page of [gm, pl] ) await ev(page, recordSounds);
+        await ev(pl, `fromUuidSync(${JSON.stringify(ids.token)}).object.control({ releaseOthers: true });`);
+        // Nothing selected on the GM: the direct play a GM gets must stay silent too.
+        await ev(gm, `canvas.tokens.releaseAll();`);
+        const near = await placeStriker(t, 3);
+        await patchResource(t, { soundEnabled: false });
+        await ev(gm, `await fromUuidSync(${JSON.stringify(near.spot)}).update({ "system.remaining": 1 });`);
+        for ( const page of [gm, pl] ) await ev(page, `chTestSounds.length = 0;`);
+        const ok = await ev(gm, `return CanvasHarvest.harvest(${JSON.stringify(near.token)}, ${JSON.stringify(near.spot)});`);
+        assert(ok === true, `the strike failed: ${await t.notes(gm)}`);
+        await t.until(pl, `fromUuidSync(${JSON.stringify(near.spot)}).system.left === 0`);
+        // The depleted cue waits 500 ms after the blow, longer under software WebGL.
+        await wait(2500);
+        for ( const [key, page] of Object.entries({ gm, pl }) ) {
+          const played = await ev(page, `return JSON.stringify(chTestSounds);`);
+          assert(played === "[]", `the ${key} client played ${played} for a silenced resource`);
+        }
+      } finally {
+        await ev(pl, `canvas.tokens.releaseAll();`);
+        await patchResource(t, { soundEnabled: "undefined" });
+        await removeStrikers(t);
+        await resetScene(t, light);
+      }
+    }
+  },
+  {
+    name: "sound: a resource's own reach replaces the world's; without one the world's applies",
+    async run(t) {
+      const { gm, pl, ev, ids } = t;
+      const light = await lightScene(t);
+      const reach = await ev(gm, `return game.settings.get("canvas-harvest", "soundRadius");`);
+      try {
+        await setReach(t, 12);
+        for ( const page of [gm, pl] ) await ev(page, recordSounds);
+        await ev(pl, `fromUuidSync(${JSON.stringify(ids.token)}).object.control({ releaseOthers: true });`);
+        const mid = await placeStriker(t, 6);
+        const distance = await ev(pl, `return canvas.grid.distance;`);
+        await patchResource(t, { soundRadius: 3 });
+        let heard = await strikeHeard(t, mid);
+        assert((heard.pl[0].radius === 3 * distance) && (heard.pl[0].volume === null),
+          `6 spaces off, with the resource's reach of 3, the player's client played ${JSON.stringify(heard.pl)}`);
+        await patchResource(t, { soundRadius: null });
+        heard = await strikeHeard(t, mid);
+        assert((heard.pl[0].radius === 12 * distance) && (heard.pl[0].volume > 0),
+          `6 spaces off, with no reach of its own, the player's client played ${JSON.stringify(heard.pl)}`);
+      } finally {
+        await ev(pl, `canvas.tokens.releaseAll();`);
+        await patchResource(t, { soundRadius: "undefined" });
+        await setReach(t, reach);
+        await removeStrikers(t);
+        await resetScene(t, light);
+      }
+    }
+  },
+  {
+    name: "sound: a package's resource keeps its switch and reach, clamped",
+    async run(t) {
+      const { gm, ev, ids } = t;
+      const r = await ev(gm, `const drops = [{ uuid: ${JSON.stringify(ids.ore)} }];
+        try {
+          CanvasHarvest.registerResources("ch-test", [
+            { id: "quiet", name: "CH Quiet", drops, soundEnabled: false, soundRadius: 5 },
+            { id: "loud", name: "CH Loud", drops, soundRadius: 500 },
+            { id: "plain", name: "CH Plain", drops }
+          ]);
+          const read = id => (({ soundEnabled, soundRadius }) => ({ soundEnabled, soundRadius }))(CanvasHarvest.getResource("ch-test." + id));
+          return { quiet: read("quiet"), loud: read("loud"), plain: read("plain") };
+        } finally {
+          CanvasHarvest.unregisterResources("ch-test");
+        }`);
+      assert((r.quiet.soundEnabled === false) && (r.quiet.soundRadius === 5), `soundEnabled: false, soundRadius: 5 read back as ${JSON.stringify(r.quiet)}`);
+      assert((r.loud.soundEnabled === true) && (r.loud.soundRadius === 60), `soundRadius: 500 read back as ${JSON.stringify(r.loud)}`);
+      assert((r.plain.soundEnabled === true) && (r.plain.soundRadius === null), `no sound fields read back as ${JSON.stringify(r.plain)}`);
+    }
+  },
+  {
+    name: "sound: the book's sound dialog silences and sets the reach, and refuses one out of range",
+    async run(t) {
+      const { gm, ev, notes, ids } = t;
+      const reach = await ev(gm, `return game.settings.get("canvas-harvest", "soundRadius");`);
+      try {
+        await setReach(t, 12);
+        const r = await ev(gm, `const wait = ms => new Promise(r => setTimeout(r, ms));
+          const book = await CanvasHarvest.openBook(); await wait(600);
+          book.element.querySelector('.ch-entry[data-resource-id=${JSON.stringify(ids.resource)}]').click();
+          await wait(600);
+          const open = async () => {
+            book.element.querySelector(".ch-sound-button").click();
+            await wait(800);
+            return document.querySelector(".ch-sound-dialog");
+          };
+          const state = d => ({ on: d.querySelector("[name=soundEnabled]").checked, slider: Number(d.querySelector("[name=soundRadius]").value),
+            shown: d.querySelector(".ch-sound-radius output").textContent, unset: d.querySelector(".ch-sound-radius").classList.contains("ch-unset"),
+            fileLocked: d.querySelector("[name=sound]").disabled, reachLocked: d.querySelector("[name=soundRadius]").disabled });
+          let d = await open();
+          const before = state(d);
+          // Closed without Done: nothing changes.
+          d.querySelector("[name=soundEnabled]").click();
+          d.querySelector('.window-header [data-action="close"]').click();
+          await wait(800);
+          const dirtyAfterClose = book.dirty;
+          d = await open();
+          d.querySelector("[name=soundEnabled]").click();
+          const locked = state(d);
+          d.querySelector("[name=soundEnabled]").click();
+          const slider = d.querySelector("[name=soundRadius]");
+          slider.value = 4;
+          slider.dispatchEvent(new Event("input", { bubbles: true }));
+          const moved = state(d);
+          d.querySelector('[data-sound="reach"]').click();
+          const reset = state(d);
+          slider.value = 4;
+          slider.dispatchEvent(new Event("input", { bubbles: true }));
+          d.querySelector("[name=soundEnabled]").click();
+          d.querySelector('[data-action="done"]').click();
+          await wait(800);
+          const draft = { soundEnabled: book.draft.soundEnabled, soundRadius: book.draft.soundRadius, dirty: book.dirty };
+          const button = book.element.querySelector(".ch-sound-button");
+          const look = { icon: button.querySelector("i").className, tip: button.dataset.tooltip };
+          book.draft.soundRadius = 61;
+          book.element.querySelector('[data-action="saveResource"]').click();
+          await wait(800);
+          const stored = game.settings.get("canvas-harvest", "resources").find(r => r.id === ${JSON.stringify(ids.resource)});
+          book.dirty = false; await book.close();
+          return { before, dirtyAfterClose, locked, moved, reset, draft, look, stored: { soundEnabled: stored.soundEnabled, soundRadius: stored.soundRadius } };`);
+        assert(r.before.on && (r.before.slider === 12) && r.before.unset && !r.before.fileLocked,
+          `a resource saved before the switch opened as ${JSON.stringify(r.before)}`);
+        assert(!r.dirtyAfterClose, "closing the dialog without Done marked the draft unsaved");
+        assert(r.locked.fileLocked && r.locked.reachLocked, `switched off, the dialog read ${JSON.stringify(r.locked)}`);
+        assert((r.moved.slider === 4) && (r.moved.shown === "4") && !r.moved.unset, `moved to 4, the reach read ${JSON.stringify(r.moved)}`);
+        assert((r.reset.slider === 12) && r.reset.unset, `reset, the reach read ${JSON.stringify(r.reset)}`);
+        assert((r.draft.soundEnabled === false) && (r.draft.soundRadius === 4) && r.draft.dirty, `after Done the draft holds ${JSON.stringify(r.draft)}`);
+        assert(r.look.icon.includes("fa-volume-xmark") && (r.look.tip === "Sound: off"), `the silenced sound button shows ${JSON.stringify(r.look)}`);
+        assert((r.stored.soundEnabled === undefined) && (r.stored.soundRadius === undefined), `a reach of 61 was saved: ${JSON.stringify(r.stored)}`);
+        const shown = await notes(gm);
+        assert(shown.includes("A number is out of range."), `a reach of 61 was not refused: ${JSON.stringify(shown)}`);
+      } finally {
+        await setReach(t, reach);
+      }
+    }
   }
 ];

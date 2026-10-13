@@ -6,7 +6,9 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { ANIMATION_ICONS, ANIMATIONS, BOOK_APP_ID, MODULE_ID, RESOURCE_DRAG_TYPE, RESOURCE_LIMITS, TEMPLATE_PATH, THEMES } from "../constants.js";
+import {
+  ANIMATION_ICONS, ANIMATIONS, BOOK_APP_ID, MODULE_ID, RESOURCE_DRAG_TYPE, RESOURCE_LIMITS, SETTING_SOUND_RADIUS, TEMPLATE_PATH, THEMES
+} from "../constants.js";
 import {
   bindSearch, confirmDialog, droppedItemRef, filterGroups, getCollapsed, getTheme, help, isWebm, liveRef, readCaret, restoreCaret,
   searchKey, setCollapsed, SingleWindow, sourceLabel
@@ -186,9 +188,11 @@ export class ResourceBook extends SingleWindow(HandlebarsApplicationMixin(Applic
       dropsHelp: help("CANVASHARVEST.Resource.Weight", "CANVASHARVEST.Book.WeightHint")
         + help("CANVASHARVEST.Resource.Amount", "CANVASHARVEST.Book.AmountHint"),
       customSound: !!draft.sound,
-      soundTip: game.i18n.localize("CANVASHARVEST.Book.SoundTip", {
-        sound: draft.sound ? draft.sound.split("/").pop() : game.i18n.localize("CANVASHARVEST.Book.SoundDefault")
-      }),
+      soundOff: draft.soundEnabled === false,
+      soundTip: (draft.soundEnabled === false) ? game.i18n.localize("CANVASHARVEST.Book.SoundOff")
+        : game.i18n.localize("CANVASHARVEST.Book.SoundTip", {
+          sound: draft.sound ? draft.sound.split("/").pop() : game.i18n.localize("CANVASHARVEST.Book.SoundDefault")
+        }),
       strikesHelp: help("CANVASHARVEST.Resource.Strikes", "CANVASHARVEST.Book.StrikesHint")
     };
   }
@@ -668,44 +672,93 @@ export class ResourceBook extends SingleWindow(HandlebarsApplicationMixin(Applic
   }
 
   /**
-   * The sound sits behind a button: a small dialog to choose a file, hear it, or go back to the
-   * animation's cue. Closing it without Done changes nothing.
+   * The sound sits behind a button: a small dialog to silence it, set how far it carries, choose a
+   * file, hear it, or go back to the animation's cue. Closing it without Done changes nothing.
    * @this {ResourceBook}
    */
   static async #onEditSound() {
     const loc = key => game.i18n.localize(key);
     const button = (key, icon, label) => `<button type="button" class="ch-icon-button" data-sound="${key}" aria-label="${label}"
       data-tooltip="${label}"><i class="fa-solid ${icon}" inert></i></button>`;
+    const helpIcon = html => `<i class="fa-solid fa-circle-question ch-help" data-tooltip-html="${foundry.utils.escapeHTML(html)}"
+      data-tooltip-class="canvas-harvest ch-tooltip ch-theme-${getTheme()}" data-tooltip-direction="UP"></i>`;
+    const [min, max] = RESOURCE_LIMITS.soundRadius;
+    // A slider has no empty value, so a resource with no reach of its own sits at the world's, dimmed,
+    // until it is moved; Reset dims it again.
+    const worldReach = game.settings.get(MODULE_ID, SETTING_SOUND_RADIUS);
+    const enabled = this.draft.soundEnabled !== false;
+    const ownReach = this.draft.soundRadius ?? null;
     // An element, not a string, so DialogV2 keeps the data attributes it would clean out of HTML.
     const content = document.createElement("div");
-    content.innerHTML = `<fieldset class="ch-field ch-sound">
+    content.innerHTML = `<div class="ch-sound-head">
+      <fieldset class="ch-field ch-sound-on">
+        <legend>${loc("CANVASHARVEST.Book.SoundEnabled")}</legend>
+        <input type="checkbox" class="ch-toggle" name="soundEnabled" aria-label="${loc("CANVASHARVEST.Book.SoundEnabled")}">
+      </fieldset>
+      <fieldset class="ch-field ch-sound-radius">
+        <legend>${loc("CANVASHARVEST.Book.SoundRadius")}</legend>
+        <input type="range" name="soundRadius" min="${min}" max="${max}" step="1">
+        <output></output>
+        <span class="ch-unit">${loc("CANVASHARVEST.Sounds.Spaces")}</span>
+        ${button("reach", "fa-rotate-left", loc("CANVASHARVEST.Book.ResetReach"))}
+        ${helpIcon(help("CANVASHARVEST.Book.SoundRadius", "CANVASHARVEST.Book.SoundRadiusHint"))}
+      </fieldset>
+    </div>
+    <fieldset class="ch-field ch-sound">
       <legend>${loc("CANVASHARVEST.Book.SoundFile")}</legend>
       <input type="text" name="sound" placeholder="${loc("CANVASHARVEST.Book.SoundDefault")}">
       ${button("browse", "fa-file-audio", loc("CANVASHARVEST.Book.Browse"))}
       ${button("preview", "fa-play", loc("CANVASHARVEST.Book.Preview"))}
       ${button("reset", "fa-rotate-left", loc("CANVASHARVEST.Book.ResetSound"))}
-      <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="${foundry.utils.escapeHTML(help("CANVASHARVEST.Resource.Sound", "CANVASHARVEST.Book.SoundHint"))}"
-         data-tooltip-class="canvas-harvest ch-tooltip ch-theme-${getTheme()}" data-tooltip-direction="UP"></i>
+      ${helpIcon(help("CANVASHARVEST.Resource.Sound", "CANVASHARVEST.Book.SoundHint"))}
     </fieldset>`;
-    // An attribute, since the dialog copies the content's markup, not its live state.
-    content.querySelector("input").setAttribute("value", this.draft.sound);
-    const sound = await foundry.applications.api.DialogV2.wait({
+    // Attributes, since the dialog copies the content's markup, not its live state.
+    content.querySelector('input[name="sound"]').setAttribute("value", this.draft.sound);
+    content.querySelector('input[name="soundRadius"]').setAttribute("value", ownReach ?? worldReach);
+    content.querySelector("output").textContent = ownReach ?? worldReach;
+    content.querySelector(".ch-sound-radius").classList.toggle("ch-unset", ownReach === null);
+    if ( enabled ) content.querySelector('input[name="soundEnabled"]').setAttribute("checked", "");
+    const result = await foundry.applications.api.DialogV2.wait({
       window: { title: "CANVASHARVEST.Resource.Sound" },
       classes: [MODULE_ID, "ch-app", "ch-dialog", "ch-sound-dialog", `ch-theme-${getTheme()}`],
       position: { width: 480 },
       content,
       buttons: [{ action: "done", label: "CANVASHARVEST.Book.Done", class: "ch-button", default: true,
-        callback: (event, target) => target.form.elements.sound.value.trim() }],
+        callback: (event, target) => {
+          const form = target.form;
+          const unset = form.querySelector(".ch-sound-radius").classList.contains("ch-unset");
+          return { sound: form.elements.sound.value.trim(), soundEnabled: form.elements.soundEnabled.checked,
+            soundRadius: unset ? null : Number(form.elements.soundRadius.value) };
+        } }],
       render: (event, dialog) => {
-        const input = dialog.element.querySelector('input[name="sound"]');
-        const on = (key, fn) => dialog.element.querySelector(`[data-sound="${key}"]`)?.addEventListener("click", fn);
+        const el = dialog.element;
+        const input = el.querySelector('input[name="sound"]');
+        const toggle = el.querySelector('input[name="soundEnabled"]');
+        const radius = el.querySelector(".ch-sound-radius");
+        const slider = radius.querySelector("input");
+        const showReach = (value, unset) => {
+          slider.value = value;
+          radius.querySelector("output").textContent = value;
+          radius.classList.toggle("ch-unset", unset);
+        };
+        // Silenced, the reach and the file have nothing to act on.
+        const lock = () => {
+          for ( const c of el.querySelectorAll(".ch-sound-radius :is(input, button), .ch-sound :is(input, button)") ) c.disabled = !toggle.checked;
+        };
+        const on = (key, fn) => el.querySelector(`[data-sound="${key}"]`)?.addEventListener("click", fn);
+        toggle.addEventListener("change", lock);
+        slider.addEventListener("input", () => showReach(slider.value, false));
+        on("reach", () => showReach(worldReach, true));
         on("browse", () => this.#browse("audio", input.value.trim(), path => input.value = path));
         on("preview", () => playCue(this.draft.animation, input.value.trim()));
         on("reset", () => input.value = "");
+        lock();
       }
     });
-    if ( (typeof sound !== "string") || (sound === this.draft.sound) ) return;
-    this.draft.sound = sound;
+    if ( !result ) return;
+    const draft = this.draft;
+    if ( (result.sound === draft.sound) && (result.soundEnabled === enabled) && (result.soundRadius === ownReach) ) return;
+    Object.assign(draft, result);
     this.#markDirty(true);
   }
 }

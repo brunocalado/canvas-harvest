@@ -24,6 +24,8 @@ import { isWebm, toItemRef } from "./helpers.js";
  * @property {{item: ItemRef, weight: number, min: number, max: number}[]} drops
  * @property {number} strikes       strikes a spot holds before it runs dry
  * @property {string} sound         "" = the animation's cue from the Harvest Sounds window
+ * @property {boolean} soundEnabled  false silences every cue it plays; missing on resources saved before it, read as true
+ * @property {number|null} soundRadius   grid spaces its cues carry; null (or missing) = the reach set in Harvest Sounds
  * @property {string} category      the book's group for it; "" = its animation's
  * @property {string[]} tags        what packages make of the resource; Canvas Harvest only keeps and passes them on
  * @property {string} [source]      "world" or the registering package's id; added on read, never stored
@@ -77,6 +79,8 @@ export function blankResource() {
     drops: [],
     strikes: 10,
     sound: "",
+    soundEnabled: true,
+    soundRadius: null,
     category: "",
     tags: []
   };
@@ -121,6 +125,7 @@ export function validateResource(r) {
   if ( hasTwins(r.tools) || hasTwins(r.drops.map(d => d.item)) ) return "Twins";
   if ( r.drops.some(d => !inRange(d.min, L.count) || !inRange(d.max, L.count) || (d.min > d.max)) ) return "BadNumbers";
   if ( !r.drops.every(d => inRange(d.weight, L.weight)) || !inRange(r.strikes, L.strikes) ) return "BadNumbers";
+  if ( ((r.soundRadius ?? null) !== null) && !inRange(r.soundRadius, L.soundRadius) ) return "BadNumbers";
   return null;
 }
 
@@ -130,9 +135,10 @@ export function validateResource(r) {
  * @returns {object}
  */
 function toStored(r) {
-  const { id, name, img, verb, animation, toolSets, tools, drops, strikes, sound, category, tags } = foundry.utils.deepClone(r);
+  const { id, name, img, verb, animation, toolSets, tools, drops, strikes, sound, soundEnabled, soundRadius, category, tags } = foundry.utils.deepClone(r);
   return { id, name: name.trim(), img, verb: verb.trim(), animation, toolSets, tools,
-    drops: drops.map(({ item, weight, min, max }) => ({ item, weight, min, max })), strikes, sound, category: category.trim(), tags };
+    drops: drops.map(({ item, weight, min, max }) => ({ item, weight, min, max })), strikes, sound,
+    soundEnabled: soundEnabled !== false, soundRadius: soundRadius ?? null, category: category.trim(), tags };
 }
 
 /**
@@ -294,6 +300,8 @@ function fromPackage(packageId, entry, label) {
     drops: drops.slice(0, L.drops),
     strikes: clampInt(entry.strikes, L.strikes, 10),
     sound: (typeof entry.sound === "string") ? entry.sound : "",
+    soundEnabled: entry.soundEnabled !== false,
+    soundRadius: Number.isInteger(entry.soundRadius) ? Math.clamp(entry.soundRadius, ...L.soundRadius) : null,
     category: (typeof entry.category === "string") ? entry.category.trim().slice(0, L.category) : "",
     tags,
     source: packageId

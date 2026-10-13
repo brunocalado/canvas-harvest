@@ -85,7 +85,7 @@
               <legend>{{localize "CANVASHARVEST.Resource.Sound"}}</legend>
               <button type="button" class="ch-icon-button ch-sound-button {{#if customSound}}ch-active{{/if}}" data-action="editSound"
                       aria-label="{{soundTip}}" data-tooltip="{{soundTip}}">
-                <i class="fa-solid fa-volume-high" inert></i>
+                <i class="fa-solid {{#if soundOff}}fa-volume-xmark{{else}}fa-volume-high{{/if}}" inert></i>
               </button>
             </fieldset>
           </div>

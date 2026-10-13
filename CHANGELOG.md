@@ -2,6 +2,7 @@
 
 - [Fixed] A Harvest Spot's button and the sparks of a strike only show where your tokens can see them: a wall, darkness without darkvision, the Blinded status or a floor between Levels hides them. A GM with a token selected sees what that token sees.
 - [Changed] Harvest sounds come from the spot and are heard only by tokens within reach, 12 grid spaces by default and set as **Reach** in Harvest Sounds. A wall that blocks sound, or a floor between Levels (a Define Surface region), stops them. A GM with no token selected still hears every harvest.
+- [Added] A resource's sound can be switched off, or given a reach of its own, from the speaker button in the Resource Book.
 
 # 0.0.1
 

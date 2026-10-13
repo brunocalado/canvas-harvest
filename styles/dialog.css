@@ -35,11 +35,49 @@
   }
 }
 
-/* The Resource Book's sound: one field with its file and its buttons. */
+/* The Resource Book's sound: the switch and the reach on one row, then the file and its buttons. */
 .canvas-harvest.ch-sound-dialog {
-  /* Core lays a dialog's fieldsets out in a column; this one is a single row. */
-  fieldset.ch-sound {
+  /* Core lays a dialog's fieldsets out in a column; each of these is a single row. */
+  fieldset.ch-field {
     flex-direction: row;
+  }
+
+  .ch-sound-head {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .ch-sound-on {
+    flex: none;
+  }
+
+  .ch-sound-radius {
+    flex: 1;
+    gap: 6px;
+
+    input[type="range"] {
+      min-width: 0;
+    }
+
+    output {
+      min-width: 1.6em;
+      color: var(--ch-trim-hi);
+      font-family: var(--ch-font-title);
+      font-size: var(--font-size-18);
+      text-align: right;
+    }
+
+    .ch-unit {
+      color: var(--ch-text-dim);
+      font-size: var(--font-size-13);
+      white-space: nowrap;
+    }
+
+    /* Following the world's reach: the slider and its number stand back until moved. */
+    &.ch-unset :is(input[type="range"], output) {
+      opacity: 0.5;
+    }
   }
 
   .ch-sound input {
@@ -48,7 +86,13 @@
     height: 30px;
   }
 
-  .ch-sound .ch-help {
+  :is(.ch-sound, .ch-sound-radius) input:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .ch-sound .ch-help,
+  .ch-sound-radius .ch-help {
     margin-left: 0;
   }
 }

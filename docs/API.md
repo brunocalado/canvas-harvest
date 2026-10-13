@@ -218,6 +218,8 @@ tool whisper adds `.ch-tool-card` and a depleted spot `.ch-depleted`.
 | `drops` | object[] | `{ uuid, weight, min, max }`: the item, how often it comes up against the others, and how many a strike gives when it does. Each strike gives one drop. | 1 to 5; weight 1–100 (100 when left out), min and max 1–20 |
 | `strikes` | number | How many strikes a spot holds before it runs dry. | 1–30, 10 by default |
 | `sound` | string | A file that replaces the animation's sound. | `""` by default |
+| `soundEnabled` | boolean | Whether its strikes make a sound at all. | `true` by default |
+| `soundRadius` | number | How far its sounds carry, in grid spaces. Omitted uses the world's reach. | 1–60 |
 | `category` | string | The group the resource is listed under in the Resource Book, within your package's. Empty lists it under its animation's verb. | up to 24 characters, `""` by default |
 | `tags` | string[] | Labels your package reacts to; see [Tags](#tags). Blanks and repeats are dropped. | up to 16, each up to 64 characters; none by default |
 

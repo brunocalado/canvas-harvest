@@ -534,8 +534,12 @@ export function registerHarvestControls() {
       // medallion at the striker's elevation: the sound starts on the floor they stand on, whatever
       // Level this client views, and core decides who is in earshot across walls and floors.
       const origin = { x: control.x, y: control.y, elevation: token?.elevation ?? canvas.level.elevation.base };
-      playCueAt(resource.animation, origin, { override: resource.sound });
-      if ( depleted ) setTimeout(() => playCueAt("depleted", origin), 500);
+      // A silenced resource still animates. Resources saved before the switch existed lack both fields.
+      if ( resource.soundEnabled !== false ) {
+        const spaces = resource.soundRadius ?? undefined;
+        playCueAt(resource.animation, origin, { override: resource.sound, spaces });
+        if ( depleted ) setTimeout(() => playCueAt("depleted", origin, { spaces }), 500);
+      }
       if ( viewed ) playStrike(control, token?.object ?? null, { animation: resource.animation, depleted });
     }
     else if ( effect?.refill && wasDepleted && viewed ) playRefill(control);

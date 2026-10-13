@@ -114,7 +114,12 @@
       "Done": "Done",
       "DragHint": "Drag onto the map to place a spot",
       "SoundFile": "File",
-      "SoundTip": "Sound: {sound}"
+      "SoundTip": "Sound: {sound}",
+      "SoundOff": "Sound: off",
+      "SoundEnabled": "Play sounds",
+      "SoundRadius": "Reach",
+      "SoundRadiusHint": "How far this resource's harvests are heard, in grid spaces. Dimmed, it follows the reach set in Harvest Sounds.",
+      "ResetReach": "Use the reach set in Harvest Sounds"
     },
     "Errors": {
       "GMOnly": "Only a GM can do that.",

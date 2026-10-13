@@ -106,8 +106,8 @@ changes the windows, the chat card and the buttons on the map, for the whole tab
 
 The GM sets the volume of the harvest sounds and the file each one plays in the **Harvest Sounds**
 window, opened from the module's settings. The sounds play on the Environment channel, so each
-player's own Environment volume applies. A resource can have a sound of its own, chosen with the
-speaker button beside its animations in the Resource Book.
+player's own Environment volume applies. The speaker button in the Resource Book gives a resource
+a sound of its own, a reach of its own, or silences it altogether.
 
 A harvest is heard from the spot, and only by the tokens close enough to hear it: 12 grid spaces by
 default, changed with **Reach** in the same window. A wall that blocks sound stops it, and so does a
