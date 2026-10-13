@@ -2,7 +2,7 @@
   "id": "canvas-harvest",
   "title": "Canvas Harvest",
   "description": "Mine veins, chop trees, gather herbs and carve game on the map. What you harvest jumps out and lands as Canvas Loot.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "authors": [{ "name": "Mestre Digital", "url": "http://youtube.com/@mestredigital", "flags": {} }],
   "compatibility": { "minimum": "14", "verified": "14" },
   "esmodules": ["scripts/main.js"],
