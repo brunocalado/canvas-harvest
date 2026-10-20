@@ -38,7 +38,8 @@ module works in any system Canvas Loot works in.
 
 A module or system can bring resources of its own. They are listed in the book under its name, and
 you can change them like your own. The spots already on the map follow your change, and **Restore**
-brings back the version the module provides.
+brings back the version the module provides. It can also suggest whether each of its resources is in
+the Field Guide from the start, once found, or never; the GM's choice in the book wins.
 
 The book lists resources by where they come from, and within that by animation: Mine, Chop, Gather
 and Carve. The tag button at the bottom gives a resource a category of your own instead, such as
@@ -85,8 +86,8 @@ Forgot what a spot is? Right-click it to open its resource in the Resource Book.
    not spent: make room and strike again. A strike whose items could not be put on the map at all is
    not spent either.
 
-A player who clicks without a tool is told which tools would do, and the GM whispers them a card
-with every one of them, the items of each Tool Set included.
+A player who clicks without a tool is told which tools would do. The try also writes the resource
+into the [Field Guide](#the-field-guide), where the player can look up every tool that works it.
 
 ![A token mining an Iron Vein: the Mine button over the vein, the stones on the floor around the token, and the chat card](docs/harvest.webp)
 
@@ -96,6 +97,44 @@ the middle of the spot. A wall in the way, darkness the token has no darkvision 
 status or a floor between them hides it, and so do the sparks of a strike there. The GM sees every
 spot on the scene, dimmed until one of their tokens stands in it, and a red warning on a spot whose
 resource was deleted. While the GM has a token selected, they see only the spots that token can see.
+
+## The Field Guide
+
+The Field Guide is a window for players. It shows the resources the party knows, the tools each one
+takes and what it gives, so a player can tell what an item is for and what to pack before setting
+out.
+
+![The Field Guide as a player sees it, on the Resources tab](docs/field-guide.webp)
+
+It has two tabs. **Resources** lists the resources by group. One the party has not found yet shows
+as a dark silhouette named ???, with nothing about its tools or what it gives. **Tools** lists the
+tools, and for each one the resources it works. A check mark shows what your selected token carries,
+or your character when no token is selected: next to a tool you carry, and next to a resource you
+have a tool for.
+
+A player opens it with the **Field Guide** button at the top of the Items directory, by
+right-clicking a spot on the map, or from the button on a chat card that says a resource is new in
+the guide.
+
+The GM decides what the guide holds. Each resource in the Resource Book has an eye that cycles
+through three states: always in the guide, in the guide once found (the default), and never in the
+guide. The eye on a group's heading sets every resource in the group at once. In the resource's
+editor the same eye sits under **Guide**, with **Mark as found** and **Forget it** for a resource
+that waits to be found. The eyes take effect at once, without **Save**.
+
+The GM opens the guide from the Items directory or from the button at the bottom of the Resource
+Book, and sees it as the players do, with hidden resources left out. Its footer has **Players see**:
+switch off Tools, Yields, Chances or Strikes to take that part out of every entry. Chances needs
+Yields. With Tools off, the guide no longer names tools, but the warning a player gets when trying
+without one still does.
+
+![The GM's Field Guide with the Players see buttons in its footer](docs/field-guide-gm.webp)
+
+A resource is found the first time anyone in the party harvests it, or tries to without the right
+tool. Found counts for the whole party: a resource one player finds is in everyone's guide. When the
+resource was waiting to be found, its first harvest adds "New in the Field Guide" to the chat card,
+and a try without the tool tells the player in a notification. A resource that is always or never in
+the guide is recorded as found too, but nobody is told.
 
 ## Settings
 
@@ -115,9 +154,6 @@ floor between Levels. That floor is a region with the Define Surface behavior, w
 too. Without one, sound and sight pass from one Level to the other, and the height between them
 counts toward the reach. A GM with no token selected hears every harvest on the scene. With a token
 selected, the GM hears what that token hears.
-
-To keep the tools a secret, turn off **Whisper the Tools Needed**: the player then gets only the
-short warning.
 
 Under Foundry's photosensitive mode the shaking and the token's lunge are left out, and there are
 fewer particles.
