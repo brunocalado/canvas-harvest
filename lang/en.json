@@ -16,10 +16,6 @@
         "Name": "Theme",
         "Hint": "How the module's windows, chat cards and map buttons look, for the whole table."
       },
-      "ToolWhisper": {
-        "Name": "Whisper the Tools Needed",
-        "Hint": "When a player tries to harvest without a tool, the GM whispers them every item that would do. Turn it off to keep the tools a secret."
-      },
       "ResourceBook": {
         "Name": "Resource Book",
         "Label": "Open the Resource Book",
@@ -143,6 +139,7 @@
       "NoToolNeeded": "No tool needed",
       "UnknownCount": "{count} not found yet",
       "Unknown": "Not found yet. Harvest one, or try to, and it is written down here.",
+      "Discovered": "{name} is now in your Field Guide.",
       "Carried": "Carried",
       "CarriesOne": "Your token carries one of these.",
       "CarriesNone": "Your token carries none of these.",
@@ -230,8 +227,8 @@
     "Chat": {
       "Left": "Strikes left: {left}",
       "Depleted": "The spot is depleted.",
-      "NeedTool": "Any one of these tools will do",
       "Stack": "{name} ×{quantity}",
+      "NewInGuide": "New in the Field Guide",
       "Undelivered": "{actor} harvested {resource}, but these could not be handed out: {items}. Hand them over yourself."
     },
     "Sounds": {

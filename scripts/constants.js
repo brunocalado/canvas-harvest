@@ -11,7 +11,7 @@ export const LOOT_ID = "canvas-loot";
 // Module-defined subtypes are namespaced by the module id.
 export const SPOT_TYPE = `${MODULE_ID}.spot`;
 export const QUERY_HARVEST = `${MODULE_ID}.harvest`;
-export const QUERY_NEED_TOOL = `${MODULE_ID}.needTool`;
+export const QUERY_DISCOVER = `${MODULE_ID}.discover`;
 export const RESOURCE_DRAG_TYPE = `${MODULE_ID}.Resource`;
 export const TEMPLATE_PATH = `modules/${MODULE_ID}/templates`;
 // Window ids, for the files that re-render a window without importing its class.
@@ -24,7 +24,6 @@ export const SETTING_THEME = "theme";
 export const SETTING_RESOURCES = "resources";
 export const SETTING_RESOURCE_EDITS = "resourceEdits";
 export const SETTING_TOOL_SETS = "toolSets";
-export const SETTING_TOOL_WHISPER = "toolWhisper";
 export const SETTING_GUIDE_VISIBILITY = "guideVisibility";
 export const SETTING_GUIDE_FOUND = "guideFound";
 export const SETTING_GUIDE_FIELDS = "guideFields";

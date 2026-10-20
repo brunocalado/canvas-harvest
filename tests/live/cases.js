@@ -234,6 +234,46 @@ function addGuideResources({ gm, pl, ev, until, ids }) {
 }
 
 /**
+ * A 7×7 spot of a resource centred on the test token, or `dx` pixels to its side, once the player has it
+ * and, centred, sees the token standing in it.
+ * @param {object} t
+ * @param {string} resource
+ * @param {number} [dx]   far enough, and the token stands outside it
+ * @returns {Promise<string>} the spot's uuid
+ */
+async function spotAt({ gm, pl, ev, until, ids }, resource, dx = 0) {
+  const spot = await ev(gm, `const c = fromUuidSync(${JSON.stringify(ids.token)}).getCenterPoint();
+    const region = await CanvasHarvest.createSpot({ resource: ${JSON.stringify(resource)}, x: c.x + ${dx}, y: c.y, margin: 3 });
+    return region.behaviors.contents[0].uuid;`);
+  await until(pl, dx ? `!!fromUuidSync(${JSON.stringify(spot)})`
+    : `fromUuidSync(${JSON.stringify(ids.token)}).regions?.has(fromUuidSync(${JSON.stringify(spot)})?.parent)`);
+  return spot;
+}
+
+/**
+ * Give the test token's actor a copy of the test pick, which every Field Guide resource takes.
+ * @param {object} t
+ */
+async function carryPick({ gm, pl, ev, until, ids }) {
+  await ev(gm, `const i = fromUuidSync(${JSON.stringify(ids.pick)});
+    await game.actors.get(${JSON.stringify(ids.actor)}).createEmbeddedDocuments("Item", [{ name: i.name, type: i.type }]);`);
+  await until(pl, `fromUuidSync(${JSON.stringify(ids.token)}).actor.items.size > 0`);
+}
+
+/**
+ * Put the scene and the test actor back after the discovery cases: no items, no extra spots or tokens.
+ * @param {object} t
+ */
+const clearDiscovery = ({ gm, ev, ids }) => ev(gm, `const a = game.actors.get(${JSON.stringify(ids.actor)});
+  await a.deleteEmbeddedDocuments("Item", a.items.map(i => i.id));
+  await canvas.scene.deleteEmbeddedDocuments("Region", canvas.scene.regions.filter(r => r.id !== ${JSON.stringify(ids.region)}).map(r => r.id));
+  await canvas.scene.deleteEmbeddedDocuments("Token", canvas.scene.tokens.filter(t => t.uuid !== ${JSON.stringify(ids.token)}).map(t => t.id));
+  await game.actors.getName("CH Test Stranger")?.delete();`);
+
+/** Whether the GM's found list holds a resource, as a JS expression. */
+const found = id => `game.settings.get("canvas-harvest", "guideFound").includes(${JSON.stringify(id)})`;
+
+/**
  * Take the Field Guide cases' resources and states away again.
  * @param {object} t
  */
@@ -1268,6 +1308,136 @@ export const cases = [
       } finally {
         await ev(pl, `await foundry.applications.instances.get("canvas-harvest-guide")?.close();`);
         await ev(gm, `await foundry.applications.instances.get("canvas-harvest-guide")?.close();`);
+        await removeGuideResources(t);
+      }
+    }
+  },
+  {
+    name: "discovery: a first strike writes a waiting resource in and says so once, its button opens the guide, shown and hidden never announce",
+    async run(t) {
+      const { gm, pl, ev, until, ids } = t;
+      await addGuideResources(t);
+      try {
+        await carryPick(t);
+        const spots = { secret: await spotAt(t, GUIDE.secret), bold: await spotAt(t, GUIDE.bold), hidden: await spotAt(t, GUIDE.hidden) };
+        // The last card posted for a spot, once one more than `count` exists.
+        const card = async (spot, count) => {
+          const forSpot = `game.messages.filter(m => m.flags["canvas-harvest"]?.spotUuid === ${JSON.stringify(spot)})`;
+          await until(gm, `${forSpot}.length > ${count}`);
+          return ev(gm, `const m = ${forSpot}.at(-1); return { isNew: m.content.includes("ch-chat-new"), flag: m.flags["canvas-harvest"].discovered ?? null };`);
+        };
+        const hit = async key => {
+          const ok = await ev(pl, `return CanvasHarvest.harvest(${JSON.stringify(ids.token)}, ${JSON.stringify(spots[key])});`);
+          assert(ok === true, `the strike on ${key} failed: ${await t.notes(pl)}`);
+        };
+        await ev(pl, `ui.chat.activate();`);
+        await hit("secret");
+        const first = await card(spots.secret, 0);
+        assert(first.isNew && first.flag === true, `the first strike did not announce: ${JSON.stringify(first)}`);
+        assert(await ev(gm, `return ${found(GUIDE.secret)};`), "the first strike did not mark the resource found");
+        // The player's own render of the card carries a working button.
+        await until(pl, `!!document.querySelector('.ch-chat-guide[data-resource-id=${JSON.stringify(GUIDE.secret)}]')`);
+        await ev(pl, `[...document.querySelectorAll('.ch-chat-guide[data-resource-id=${JSON.stringify(GUIDE.secret)}]')].at(-1).click();`);
+        await until(pl, `!!document.querySelector('#canvas-harvest-guide .ch-entry.ch-active[data-resource-id=${JSON.stringify(GUIDE.secret)}]')`);
+        await hit("secret");
+        const second = await card(spots.secret, 1);
+        assert(!second.isNew && second.flag === null, `the second strike announced again: ${JSON.stringify(second)}`);
+        for ( const key of ["bold", "hidden"] ) {
+          await hit(key);
+          const c = await card(spots[key], 0);
+          assert(!c.isNew && c.flag === null, `a ${key} resource announced: ${JSON.stringify(c)}`);
+          assert(await ev(gm, `return ${found(GUIDE[key])};`), `the strike did not record the ${key} resource as found`);
+        }
+      } finally {
+        await ev(pl, `await foundry.applications.instances.get("canvas-harvest-guide")?.close();`);
+        await clearDiscovery(t);
+        await removeGuideResources(t);
+      }
+    }
+  },
+  {
+    name: "discovery: a try without the tool writes the resource in and tells the player, an HTML name as text",
+    async run(t) {
+      const { gm, pl, ev, until, ids } = t;
+      // Read off the screen: the runner records a formatted notification by its key, before core formats it.
+      const toast = text => `[...document.querySelectorAll("#notifications .notification")].find(n => n.textContent.includes(${JSON.stringify(text)}))`;
+      await addGuideResources(t);
+      try {
+        const secret = await spotAt(t, GUIDE.secret);
+        assert(await ev(pl, `return CanvasHarvest.harvest(${JSON.stringify(ids.token)}, ${JSON.stringify(secret)});`) === false,
+          "the strike went through without the tool");
+        await until(gm, found(GUIDE.secret));
+        const expected = await ev(pl, `return game.i18n.localize("CANVASHARVEST.Guide.Discovered", { name: "CH Secret" });`);
+        try {
+          await until(pl, `!!${toast(expected)}`);
+        } catch {
+          throw new Error(`the player was not shown ${JSON.stringify(expected)}`);
+        }
+
+        await ev(gm, `await game.settings.set("canvas-harvest", "guideVisibility", { ...game.settings.get("canvas-harvest", "guideVisibility"),
+          ${JSON.stringify(GUIDE.bold)}: "discover" });`);
+        await until(pl, `game.settings.get("canvas-harvest", "guideVisibility")[${JSON.stringify(GUIDE.bold)}] === "discover"`);
+        const bold = await spotAt(t, GUIDE.bold);
+        await ev(pl, `return CanvasHarvest.harvest(${JSON.stringify(ids.token)}, ${JSON.stringify(bold)});`);
+        await until(pl, `!!${toast("CH Bold")}`);
+        assert(await ev(pl, `const el = ${toast("CH Bold")}; return !el.querySelector("b") && el.textContent.includes("<b>CH Bold</b>");`),
+          "the name in the notification rendered as markup");
+      } finally {
+        await clearDiscovery(t);
+        await removeGuideResources(t);
+      }
+    }
+  },
+  {
+    name: "discovery: a player can't mark a spot their token doesn't stand in, or with a token they don't own",
+    async run(t) {
+      const { gm, pl, ev, until, ids } = t;
+      await addGuideResources(t);
+      try {
+        const far = await spotAt(t, GUIDE.secret, -900);
+        const near = await spotAt(t, GUIDE.secret);
+        const stranger = await ev(gm, `const hero = fromUuidSync(${JSON.stringify(ids.token)});
+          const actor = await Actor.implementation.create({ name: "CH Test Stranger", type: hero.actor.type });
+          const data = (await actor.getTokenDocument({ x: hero.x, y: hero.y })).toObject();
+          const [token] = await canvas.scene.createEmbeddedDocuments("Token", [data]);
+          return token.uuid;`);
+        await until(pl, `!!fromUuidSync(${JSON.stringify(stranger)})`);
+        const ask = (spot, token) => ev(pl, `return game.users.activeGM.query("canvas-harvest.discover",
+          { behaviorUuid: ${JSON.stringify(spot)}, tokenUuid: ${JSON.stringify(token)} });`);
+        const away = await ask(far, ids.token);
+        const notMine = await ask(near, stranger);
+        assert(away?.discovered === false, `a spot the token doesn't stand in answered ${JSON.stringify(away)}`);
+        assert(notMine?.discovered === false, `a token the player doesn't own answered ${JSON.stringify(notMine)}`);
+        assert(!(await ev(gm, `return ${found(GUIDE.secret)};`)), "a refused query marked the resource found");
+        // The same query from where the token stands does write, so the refusals above are the rule's.
+        const mine = await ask(near, ids.token);
+        assert(mine?.discovered === true && await ev(gm, `return ${found(GUIDE.secret)};`), `the player's own try answered ${JSON.stringify(mine)}`);
+      } finally {
+        await clearDiscovery(t);
+        await removeGuideResources(t);
+      }
+    }
+  },
+  {
+    name: "discovery: two strikes on two resources at once both land in found",
+    async run(t) {
+      const { gm, pl, ev, until, ids } = t;
+      await addGuideResources(t);
+      try {
+        await carryPick(t);
+        const a = await spotAt(t, GUIDE.secret);
+        const b = await spotAt(t, GUIDE.hidden);
+        const other = await ev(gm, `const hero = fromUuidSync(${JSON.stringify(ids.token)});
+          const data = (await hero.actor.getTokenDocument({ x: hero.x, y: hero.y })).toObject();
+          const [token] = await canvas.scene.createEmbeddedDocuments("Token", [data]);
+          return token.uuid;`);
+        await until(pl, `fromUuidSync(${JSON.stringify(other)})?.regions?.has(fromUuidSync(${JSON.stringify(b)}).parent)`);
+        const ok = await ev(pl, `return Promise.all([CanvasHarvest.harvest(${JSON.stringify(ids.token)}, ${JSON.stringify(a)}),
+          CanvasHarvest.harvest(${JSON.stringify(other)}, ${JSON.stringify(b)})]);`);
+        assert(ok.every(r => r === true), `the strikes returned ${JSON.stringify(ok)}: ${await t.notes(pl)}`);
+        await until(gm, `${found(GUIDE.secret)} && ${found(GUIDE.hidden)}`);
+      } finally {
+        await clearDiscovery(t);
         await removeGuideResources(t);
       }
     }

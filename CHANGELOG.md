@@ -1,5 +1,7 @@
 # Unreleased
 
+- [Added] The first harvest of a resource, or a try without its tool, writes it into the Field Guide; the chat card and a notification say so.
+- [Breaking][Removed] The "Whisper the Tools Needed" setting and the whispered tool card: the Field Guide shows the tools instead.
 - [Added] An eye on each resource and group in the Resource Book sets whether it is always, once found, or never in the Field Guide; the guide's footer sets which fields players see.
 - [Added] Field Guide: players open it from the Items directory, or by right-clicking a spot, to see the resources they know, the tools each takes and what it gives.
 - [Added] Packages can suggest whether each resource they register shows in the Field Guide (`guide` in registerResources).

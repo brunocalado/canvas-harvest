@@ -92,6 +92,15 @@ Hooks.on("renderItemDirectory", (app, html) => {
 });
 
 /**
+ * The button a harvest card carries when the strike first wrote its resource into the Field Guide. The
+ * card is posted once on the GM, so each client wires the button as it renders the message.
+ */
+Hooks.on("renderChatMessageHTML", (message, html) => {
+  const button = html.querySelector(`.${MODULE_ID} .ch-chat-guide`);
+  button?.addEventListener("click", () => api.openGuide({ resource: button.dataset.resourceId }));
+});
+
+/**
  * The Field Guide marks the tools the selected token carries, so it follows a change of token and
  * the items coming and going on that token's actor. A burst of changes renders it once.
  */

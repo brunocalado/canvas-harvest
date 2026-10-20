@@ -9,7 +9,7 @@
 import {
   ANIMATIONS, GUIDE_FIELDS, MODULE_ID, RESOURCE_LIMITS, SETTING_GUIDE_FIELDS, SETTING_GUIDE_FOUND, SETTING_GUIDE_VISIBILITY,
   SETTING_RESOURCE_EDITS, SETTING_RESOURCES, SETTING_SOUND_RADIUS, SETTING_SOUND_VOLUME, SETTING_THEME, SETTING_TOOL_SETS,
-  SETTING_TOOL_WHISPER, SOUND_CUES, THEMES
+  SOUND_CUES, THEMES
 } from "./constants.js";
 import { ResourceBook } from "./apps/resource-book.js";
 import { SoundConfig } from "./apps/sound-config.js";
@@ -63,16 +63,6 @@ export function registerSettings() {
       clearPalettes();
       redrawSpots();
     }
-  });
-
-  // Whether a player who lacks a tool is whispered the full list. Off keeps the tools a secret.
-  game.settings.register(MODULE_ID, SETTING_TOOL_WHISPER, {
-    name: "CANVASHARVEST.Settings.ToolWhisper.Name",
-    hint: "CANVASHARVEST.Settings.ToolWhisper.Hint",
-    scope: "world",
-    config: true,
-    type: Boolean,
-    default: true
   });
 
   // The GM's resources. Registered ones live in memory on each client and are never stored here.

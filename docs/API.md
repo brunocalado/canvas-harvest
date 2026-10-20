@@ -134,12 +134,11 @@ nothing on the map is given back to the spot and fires no hook.
 
 ## Chat messages
 
-Canvas Harvest posts three messages, all from the active GM:
+Canvas Harvest posts two messages, both from the active GM:
 
 | `event` | Who sees it | When |
 |---|---|---|
 | `"harvest"` | everyone | A strike put its items on the map: who struck, what fell, and the strikes left. |
-| `"needTool"` | the player who clicked | The player's token carries none of the tools the resource takes; lists every one that would do. Only while the GMs' "whisper the tools" setting is on. |
 | `"undelivered"` | the GMs | Part of a strike found no space on the map, so the GM can hand it over. |
 
 A system or module can give any of them its own look, or drop it, with
@@ -185,11 +184,12 @@ Every message carries in `flags["canvas-harvest"]`:
 
 | Flag | | |
 |---|---|---|
-| `event` | `"harvest"`, `"needTool"` or `"undelivered"` | |
-| `actorName` | `string` | The striking token's name. For `"needTool"`, the token that tried. |
+| `event` | `"harvest"` or `"undelivered"` | |
+| `actorName` | `string` | The striking token's name. |
 | `resource` | `{ id, name, img, animation, verb }` | The resource struck. `verb` is there only when the resource has its own; otherwise word the `animation`'s verb yourself. |
-| `items` | `{ uuid, name, img, quantity }[]` | `"harvest"`: what reached the map. `"undelivered"`: what did not. `"needTool"`: the tools that would do, without `quantity`. |
+| `items` | `{ uuid, name, img, quantity }[]` | `"harvest"`: what reached the map. `"undelivered"`: what did not. |
 | `left` | `number` | The spot's strikes left. `"harvest"` only; `0` means depleted. |
+| `discovered` | `true` | `"harvest"` only: present on the strike that first wrote a resource into the Field Guide while it waits to be found there. Absent otherwise. |
 | `spotUuid` | `string` | The spot's `RegionBehavior`. |
 
 Canvas Harvest writes these flags again after the hook, so they stay as they are whatever a
@@ -197,10 +197,10 @@ listener does to them.
 
 The second argument holds the live objects: `event` again, `token` the `TokenDocument`, `resource`
 a copy of the [resource](#resource-format) with its tags, `spot` the `RegionBehavior`, and `user`
-the `User` who struck (for `"needTool"`, the one being whispered).
+the `User` who struck.
 
-To style the default cards instead of replacing them, target `.canvas-harvest.ch-chat-card`; the
-tool whisper adds `.ch-tool-card` and a depleted spot `.ch-depleted`.
+To style the default cards instead of replacing them, target `.canvas-harvest.ch-chat-card`; a
+depleted spot adds `.ch-depleted`, and a discovery adds a `.ch-chat-new` line with the guide's button.
 
 ---
 

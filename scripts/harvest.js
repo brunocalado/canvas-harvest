@@ -7,11 +7,10 @@
  */
 
 import {
-  ANIMATION_ICONS, HARVEST_FLIGHT, LOOT_ID, MODULE_ID, QUERY_HARVEST, QUERY_NEED_TOOL, SETTING_TOOL_WHISPER,
-  SPOT_TYPE, STRIKE_MS, TEMPLATE_PATH
+  ANIMATION_ICONS, HARVEST_FLIGHT, LOOT_ID, MODULE_ID, QUERY_DISCOVER, QUERY_HARVEST, SPOT_TYPE, STRIKE_MS, TEMPLATE_PATH
 } from "./constants.js";
 import { getTheme, isWebm, liveRef } from "./helpers.js";
-import { carriesTool, resourceTools } from "./guide.js";
+import { carriesTool, guideState, resourceTools, setFound } from "./guide.js";
 import { medallionArea } from "./harvest-control.js";
 import { getToolSet } from "./tool-sets.js";
 
@@ -77,10 +76,7 @@ export function checkHarvest(behavior, token, user, { authoritative = false } = 
   if ( tools.length && !carriesTool(token.actor, tools) ) {
     // A set can hold dozens of items, so it is named as a set rather than item by item.
     const sets = resource.toolSets.filter(set => getToolSet(set).length);
-    const err = refusal("NeedTool", { tools: resource.tools.map(tool => liveRef(tool).name), sets });
-    // Every item that would do, in the notification's order, for the GM's whisper.
-    err.tools = tools;
-    throw err;
+    throw refusal("NeedTool", { tools: resource.tools.map(tool => liveRef(tool).name), sets });
   }
   return resource;
 }
@@ -135,9 +131,13 @@ export async function requestHarvest(behavior, token = null) {
     return true;
   } catch(err) {
     ui.notifications.warn(err.message);
-    // The GM checks again before naming anything, so the query can't be used to read a spot's tools.
-    if ( err.tools && game.settings.get(MODULE_ID, SETTING_TOOL_WHISPER) ) {
-      game.users.activeGM?.query(QUERY_NEED_TOOL, { behaviorUuid: behavior.uuid, tokenUuid: token.uuid }).catch(() => {});
+    // A try without the tool writes the resource into the Field Guide. The GM checks again before writing,
+    // so the query can't mark a spot this user's token doesn't stand in. Not awaited: the refusal is
+    // already said, and the news can follow a moment later.
+    if ( (err.refusal?.key === "NeedTool") && game.users.activeGM ) {
+      game.users.activeGM.query(QUERY_DISCOVER, { behaviorUuid: behavior.uuid, tokenUuid: token.uuid }).then(({ discovered }) => {
+        if ( discovered ) ui.notifications.info("CANVASHARVEST.Guide.Discovered", { format: { name: behavior.system.resourceData.name } });
+      }).catch(() => {});
     }
     return false;
   }
@@ -193,8 +193,16 @@ async function gmClaim({ behaviorUuid, tokenUuid } = {}, user) {
     const left = behavior.system.left - 1;
     // The options reach the updateRegionBehavior hook on every client, which plays the strike there.
     await behavior.update({ "system.remaining": left }, { [MODULE_ID]: { strike: token.uuid, depleted: left === 0 } });
+    // Inside the queue, so two strikes on two resources can't both read the found list and drop one
+    // write. The strike is spent by now, so a failed write is logged and never refuses it.
+    const written = await setFound(resource.id, true).catch(err => {
+      console.error(`${MODULE_ID} | Could not write ${resource.name} into the Field Guide`, err);
+      return false;
+    });
+    const discovered = written && (guideState(resource) === "discover");
     const { x, y, width, height } = behavior.parent.bounds;
-    return { behavior, token, resource, items, left, user, drops, units, centre: { x: x + (width / 2), y: y + (height / 2) } };
+    return { behavior, token, resource, items, left, user, drops, units, discovered,
+      centre: { x: x + (width / 2), y: y + (height / 2) } };
   } catch(err) {
     busy.delete(behavior.uuid);
     throw err;
@@ -335,7 +343,7 @@ function resourceFlag({ id, name, img, animation, verb }) {
  * Post one of the module's messages, on the active GM. The message carries what happened as data in
  * its flags, and canvas-harvest.preChatMessage lets a system or module restyle or cancel it first.
  * @param {object} messageData   what ChatMessage.create takes, without the flags
- * @param {object} data          the flags: event, actorName, resource, items, spotUuid, and left for a harvest
+ * @param {object} data          the flags: event, actorName, resource, items, spotUuid, and left and discovered for a harvest
  * @param {object} context       the live objects the flags don't carry
  */
 async function postMessage(messageData, data, context) {
@@ -349,12 +357,13 @@ async function postMessage(messageData, data, context) {
 }
 
 /**
- * The public card: who harvested what, and how much is left.
+ * The public card: who harvested what, how much is left, and whether the strike wrote the resource into
+ * the Field Guide.
  * @param {object} claim
  * @param {{ref: ItemRef, quantity: number}[]} undelivered
  * @param {number} left
  */
-async function postCard({ behavior, token, resource, drops, user }, undelivered, left) {
+async function postCard({ behavior, token, resource, drops, user, discovered }, undelivered, left) {
   const speaker = ChatMessage.implementation.getSpeaker({ token });
   const rows = drops.flatMap(({ ref, quantity }) => {
     const ground = quantity - (undelivered.find(d => d.ref.uuid === ref.uuid)?.quantity ?? 0);
@@ -370,11 +379,12 @@ async function postCard({ behavior, token, resource, drops, user }, undelivered,
     actorName: speaker.alias,
     drops: rows,
     left,
-    depleted: left === 0
+    depleted: left === 0,
+    discovered
   });
-  await postMessage({ speaker, content }, {
-    event: "harvest", actorName: speaker.alias, resource: resourceFlag(resource), items: rows, left, spotUuid: behavior.uuid
-  }, { token, resource: foundry.utils.deepClone(resource), spot: behavior, user });
+  const data = { event: "harvest", actorName: speaker.alias, resource: resourceFlag(resource), items: rows, left, spotUuid: behavior.uuid };
+  if ( discovered ) data.discovered = true;
+  await postMessage({ speaker, content }, data, { token, resource: foundry.utils.deepClone(resource), spot: behavior, user });
 }
 
 /**
@@ -400,37 +410,29 @@ async function whisperUndelivered({ behavior, token, resource, user }, undeliver
 }
 
 /**
- * Whisper a player who lacks a tool every item that would do, once the GM's own check agrees.
+ * Write a resource into the Field Guide when a player tries it without a tool, once the GM's own check
+ * agrees. checkHarvest tests ownership, place and reserve before tools, so a NeedTool refusal here
+ * proves the user owns a token standing in that live spot: a player can only mark the resource under
+ * their own token.
  * @param {{behaviorUuid: string, tokenUuid: string}} payload
  * @param {User} user   who the server says sent the query
+ * @returns {Promise<{discovered: boolean}>}   true when the try first wrote a resource that waits to be found
  */
-async function whisperTools({ behaviorUuid, tokenUuid } = {}, user) {
-  if ( !game.user.isActiveGM || !game.settings.get(MODULE_ID, SETTING_TOOL_WHISPER) ) return;
+async function discover({ behaviorUuid, tokenUuid } = {}, user) {
+  if ( !game.user.isActiveGM ) return { discovered: false };
   const behavior = (typeof behaviorUuid === "string") ? await fromUuid(behaviorUuid) : null;
   const token = (typeof tokenUuid === "string") ? await fromUuid(tokenUuid) : null;
-  if ( (behavior?.documentName !== "RegionBehavior") || (token?.documentName !== "Token") ) return;
-  let tools;
+  if ( (behavior?.documentName !== "RegionBehavior") || (token?.documentName !== "Token") ) return { discovered: false };
   try {
     checkHarvest(behavior, token, user, { authoritative: true });
+    return { discovered: false };
   } catch(err) {
-    tools = err.tools;
+    if ( err.refusal?.key !== "NeedTool" ) return { discovered: false };
   }
-  if ( !tools ) return;
   const resource = behavior.system.resourceData;
-  // A tool can sit both in a set and among the resource's own.
-  const seen = new Set();
-  const rows = tools.map(liveRef).filter(ref => !seen.has(ref.uuid) && seen.add(ref.uuid));
-  const content = await foundry.applications.handlebars.renderTemplate(`${TEMPLATE_PATH}/tool-card.hbs`, {
-    theme: getTheme(),
-    resource,
-    resourceVideo: isWebm(resource.img),
-    icon: ANIMATION_ICONS[resource.animation],
-    tools: rows
-  });
-  const items = rows.map(({ uuid, name, img }) => ({ uuid, name, img }));
-  await postMessage({ content, whisper: [user.id] }, {
-    event: "needTool", actorName: token.name, resource: resourceFlag(resource), items, spotUuid: behavior.uuid
-  }, { token, resource: foundry.utils.deepClone(resource), spot: behavior, user });
+  // In the claims' queue, so a strike elsewhere can't read the found list before this write lands.
+  const written = await serial(() => setFound(resource.id, true));
+  return { discovered: written && (guideState(resource) === "discover") };
 }
 
 export function registerHarvest() {
@@ -445,5 +447,5 @@ export function registerHarvest() {
       throw err;
     }
   };
-  CONFIG.queries[QUERY_NEED_TOOL] = (payload, { user }) => whisperTools(payload, user);
+  CONFIG.queries[QUERY_DISCOVER] = (payload, { user }) => discover(payload, user);
 }

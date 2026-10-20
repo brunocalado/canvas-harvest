@@ -17,4 +17,10 @@
     {{/each}}
   </ul>
   <p class="ch-chat-left">{{#if depleted}}{{localize "CANVASHARVEST.Chat.Depleted"}}{{else}}{{localize "CANVASHARVEST.Chat.Left" left=left}}{{/if}}</p>
+  {{#if discovered}}
+  <p class="ch-chat-new">
+    <i class="fa-solid fa-leaf" inert></i> <span>{{localize "CANVASHARVEST.Chat.NewInGuide"}}</span>
+    <button type="button" class="ch-chat-guide" data-resource-id="{{resource.id}}">{{localize "CANVASHARVEST.Guide.Open"}}</button>
+  </p>
+  {{/if}}
 </div>

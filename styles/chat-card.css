@@ -97,12 +97,41 @@
     text-align: right;
   }
 
-  /* Tools are round, as in the Resource Book. */
-  &.ch-tool-card .ch-chat-items {
-    margin-bottom: 0;
+  /* The first strike on a resource that waits to be found. */
+  .ch-chat-new {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0 0;
+    padding: 4px 6px;
+    border: 1px dashed rgba(var(--ch-glow-rgb), 0.6);
+    border-radius: var(--ch-radius);
+    color: var(--ch-glow);
+    font-size: var(--font-size-12);
 
-    img {
-      border-radius: 50%;
+    span {
+      flex: 1;
+      min-width: 0;
+    }
+
+    button {
+      flex: none;
+      width: auto;
+      height: auto;
+      margin: 0;
+      padding: 2px 8px;
+      background: linear-gradient(180deg, var(--ch-metal-hi), var(--ch-metal));
+      border: 1px solid var(--ch-trim);
+      border-radius: var(--ch-radius);
+      color: var(--ch-text);
+      font-family: var(--ch-font-title);
+      font-size: var(--font-size-12);
+      line-height: normal;
+
+      &:hover {
+        border-color: var(--ch-trim-hi);
+        box-shadow: 0 0 10px rgba(var(--ch-glow-rgb), 0.5);
+      }
     }
   }
 
