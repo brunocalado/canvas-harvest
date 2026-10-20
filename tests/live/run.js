@@ -53,8 +53,9 @@ async function login(user) {
   page.on("console", m => { if ( m.type() === "error" ) errors.push(`[${user}] ${m.text()}`); });
   page.on("pageerror", e => errors.push(`[${user}] [pageerror] ${e.message}`));
   await page.goto(`${URL}/join`, { waitUntil: "networkidle" });
-  // The join form changed within v14: a select up to ~14.365, a text field after.
-  const select = page.locator("select[name=userid], #join-username");
+  // The join form changed within v14: a select named userid up to ~14.365, a text field after, and a
+  // select named userId again from 14.369. Attribute values match case-sensitively.
+  const select = page.locator("select[name=userid], select[name=userId], #join-username");
   if ( (await select.count()) && (await select.first().evaluate(el => el.tagName)) === "SELECT" ) {
     await select.first().selectOption({ label: user });
   }
