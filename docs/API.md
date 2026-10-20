@@ -222,10 +222,17 @@ tool whisper adds `.ch-tool-card` and a depleted spot `.ch-depleted`.
 | `soundRadius` | number | How far its sounds carry, in grid spaces. Omitted uses the world's reach. | 1–60 |
 | `category` | string | The group the resource is listed under in the Resource Book, within your package's. Empty lists it under its animation's verb. | up to 24 characters, `""` by default |
 | `tags` | string[] | Labels your package reacts to; see [Tags](#tags). Blanks and repeats are dropped. | up to 16, each up to 64 characters; none by default |
+| `guide` | string | Whether players find the resource in their Field Guide: `"shown"` lists it from the start, `"discover"` lists it unnamed until the party first harvests it or tries to, `"hidden"` never lists it. The GM's eye in the Resource Book overrides it. Any other value is left out. | `"discover"` by default |
 
 Numbers are rounded and clamped to their limits, and a `max` below its `min` is raised to it. Canvas
 Harvest doesn't know what a resource is: a vein, a tree and a carcass differ only in their tools,
 drops and animation. What a resource means to your package goes in its [tags](#tags).
+
+To have players know a whole list from the start, mark every entry before registering it:
+
+```js
+registerResources("my-module", RESOURCES.map(r => ({ ...r, guide: "shown" })));
+```
 
 ---
 

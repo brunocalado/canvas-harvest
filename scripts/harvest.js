@@ -10,7 +10,8 @@ import {
   ANIMATION_ICONS, HARVEST_FLIGHT, LOOT_ID, MODULE_ID, QUERY_HARVEST, QUERY_NEED_TOOL, SETTING_TOOL_WHISPER,
   SPOT_TYPE, STRIKE_MS, TEMPLATE_PATH
 } from "./constants.js";
-import { getTheme, isWebm, liveRef, refMatches, toItemRef } from "./helpers.js";
+import { getTheme, isWebm, liveRef } from "./helpers.js";
+import { carriesTool, resourceTools } from "./guide.js";
 import { medallionArea } from "./harvest-control.js";
 import { getToolSet } from "./tool-sets.js";
 
@@ -72,20 +73,14 @@ export function checkHarvest(behavior, token, user, { authoritative = false } = 
   if ( behavior.system.left <= 0 ) throw refusal("Depleted");
   // The resource's own tools, or any item of a switched-on Tool Set. A set left empty is ignored, as if
   // switched off. The GM reads its own sets: the world's setting and what packages added on its client.
-  const sets = resource.toolSets.map(set => [set, getToolSet(set)]).filter(([, items]) => items.length);
-  const candidates = [...sets.flatMap(([, items]) => items), ...resource.tools];
-  if ( candidates.length ) {
-    const carried = token.actor.items.map(i => toItemRef(i));
-    // A hand-made copy is matched by name, and a tool renamed in the directory leaves copies under
-    // either name, so the name it was listed with and its current one both count.
-    const tools = candidates.map(tool => [tool, liveRef(tool)]);
-    if ( !tools.some(pair => carried.some(ref => pair.some(tool => refMatches(tool, ref)))) ) {
-      // A set can hold dozens of items, so it is named as a set rather than item by item.
-      const err = refusal("NeedTool", { tools: resource.tools.map(tool => liveRef(tool).name), sets: sets.map(([set]) => set) });
-      // Every item that would do, in the notification's order, for the GM's whisper.
-      err.tools = [...resource.tools, ...sets.flatMap(([, items]) => items)];
-      throw err;
-    }
+  const tools = resourceTools(resource);
+  if ( tools.length && !carriesTool(token.actor, tools) ) {
+    // A set can hold dozens of items, so it is named as a set rather than item by item.
+    const sets = resource.toolSets.filter(set => getToolSet(set).length);
+    const err = refusal("NeedTool", { tools: resource.tools.map(tool => liveRef(tool).name), sets });
+    // Every item that would do, in the notification's order, for the GM's whisper.
+    err.tools = tools;
+    throw err;
   }
   return resource;
 }

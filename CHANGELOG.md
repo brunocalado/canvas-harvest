@@ -1,3 +1,7 @@
+# Unreleased
+
+- [Added] Packages can suggest whether each resource they register shows in the Field Guide (`guide` in registerResources).
+
 # 0.0.3
 
 - [Added] First release on the Foundry VTT package list, approved by Foundry. Nothing else changed since 0.0.2.

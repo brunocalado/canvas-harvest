@@ -6,10 +6,15 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { ANIMATIONS, MODULE_ID, RESOURCE_LIMITS, SETTING_RESOURCE_EDITS, SETTING_RESOURCES, SETTING_SOUND_RADIUS, SETTING_SOUND_VOLUME, SETTING_THEME, SETTING_TOOL_SETS, SETTING_TOOL_WHISPER, SOUND_CUES, THEMES } from "./constants.js";
+import {
+  ANIMATIONS, GUIDE_FIELDS, MODULE_ID, RESOURCE_LIMITS, SETTING_GUIDE_FIELDS, SETTING_GUIDE_FOUND, SETTING_GUIDE_VISIBILITY,
+  SETTING_RESOURCE_EDITS, SETTING_RESOURCES, SETTING_SOUND_RADIUS, SETTING_SOUND_VOLUME, SETTING_THEME, SETTING_TOOL_SETS,
+  SETTING_TOOL_WHISPER, SOUND_CUES, THEMES
+} from "./constants.js";
 import { ResourceBook } from "./apps/resource-book.js";
 import { SoundConfig } from "./apps/sound-config.js";
 import { ToolSetsConfig } from "./apps/tool-sets-config.js";
+import { guideChanged } from "./guide.js";
 import { redrawSpots } from "./harvest-control.js";
 import { clearPalettes } from "./helpers.js";
 import { catalogueChanged } from "./resources.js";
@@ -96,6 +101,33 @@ export function registerSettings() {
     type: Object,
     default: Object.fromEntries(ANIMATIONS.map(set => [set, []])),
     onChange: toolSetsChanged
+  });
+
+  // Each resource's state in the Field Guide, by resource id. Missing = the package's suggestion, else "discover".
+  game.settings.register(MODULE_ID, SETTING_GUIDE_VISIBILITY, {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: {},
+    onChange: guideChanged
+  });
+
+  // Ids of the resources the party has found. Written by the active GM only.
+  game.settings.register(MODULE_ID, SETTING_GUIDE_FOUND, {
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+    onChange: guideChanged
+  });
+
+  // What every Field Guide entry shows players.
+  game.settings.register(MODULE_ID, SETTING_GUIDE_FIELDS, {
+    scope: "world",
+    config: false,
+    type: Object,
+    default: Object.fromEntries(GUIDE_FIELDS.map(field => [field, true])),
+    onChange: guideChanged
   });
 
   // The base loudness of the cues for the whole table. Each user still scales it with their own

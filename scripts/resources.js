@@ -6,7 +6,8 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { ANIMATIONS, BOOK_APP_ID, DEFAULT_RESOURCE_IMG, MODULE_ID, RESOURCE_LIMITS, SETTING_RESOURCE_EDITS, SETTING_RESOURCES } from "./constants.js";
+import { ANIMATIONS, DEFAULT_RESOURCE_IMG, GUIDE_STATES, MODULE_ID, RESOURCE_LIMITS, SETTING_RESOURCE_EDITS, SETTING_RESOURCES } from "./constants.js";
+import { guideChanged } from "./guide.js";
 import { refreshSpots } from "./harvest-control.js";
 import { isWebm, toItemRef } from "./helpers.js";
 
@@ -28,6 +29,8 @@ import { isWebm, toItemRef } from "./helpers.js";
  * @property {number|null} soundRadius   grid spaces its cues carry; null (or missing) = the reach set in Harvest Sounds
  * @property {string} category      the book's group for it; "" = its animation's
  * @property {string[]} tags        what packages make of the resource; Canvas Harvest only keeps and passes them on
+ * @property {"shown"|"discover"|"hidden"} [guide]   a package's suggestion for the Field Guide; the GM's choice,
+ *   kept in its own setting, overrides it. World resources never carry it
  * @property {string} [source]      "world" or the registering package's id; added on read, never stored
  * @property {boolean} [edited]     a package's resource the GM changed; added on read, never stored
  */
@@ -36,11 +39,11 @@ import { isWebm, toItemRef } from "./helpers.js";
 const registered = new Map();
 
 /**
- * The book and the spots on the map follow every change to the catalogue, whoever makes it: a
- * resource deleted or unregistered leaves its spots inert, one registered brings them back.
+ * The book, the Field Guide and the spots on the map follow every change to the catalogue, whoever
+ * makes it: a resource deleted or unregistered leaves its spots inert, one registered brings them back.
  */
 export function catalogueChanged() {
-  foundry.applications.instances.get(BOOK_APP_ID)?.render();
+  guideChanged();
   refreshSpots();
 }
 
@@ -52,9 +55,10 @@ export function getWorldResources() {
 /** @returns {Resource[]} the world's first, then those packages registered, each as the GM edited it */
 export function getAllResources() {
   const edits = game.settings.get(MODULE_ID, SETTING_RESOURCE_EDITS);
-  // Tags always come from the package: they are how it recognises its resource in its hooks.
+  // Tags always come from the package: they are how it recognises its resource in its hooks. So does
+  // its suggestion for the Field Guide, which the GM overrides with the eye, not with an edit.
   const fromPackages = [...registered.values()].map(r => (edits[r.id]
-    ? { ...edits[r.id], id: r.id, source: r.source, tags: r.tags, edited: true } : r));
+    ? { ...edits[r.id], id: r.id, source: r.source, tags: r.tags, guide: r.guide, edited: true } : r));
   return [...getWorldResources(), ...fromPackages];
 }
 
@@ -287,6 +291,10 @@ function fromPackage(packageId, entry, label) {
     drops.push({ item, weight: clampInt(drop.weight, L.weight, L.weight[1]), ...clampPair(drop, L.count) });
   }
   if ( !drops.length ) return "no drop resolves to an item";
+  const guide = GUIDE_STATES.includes(entry.guide) ? entry.guide : undefined;
+  if ( (entry.guide !== undefined) && !guide ) {
+    console.warn(`${MODULE_ID} | Resource ${label}: guide must be one of ${GUIDE_STATES.join(", ")}; left out.`);
+  }
   if ( tools.length > L.tools ) console.warn(`${MODULE_ID} | Resource ${label}: only the first ${L.tools} tools are kept.`);
   if ( drops.length > L.drops ) console.warn(`${MODULE_ID} | Resource ${label}: only the first ${L.drops} drops are kept.`);
   return {
@@ -304,6 +312,7 @@ function fromPackage(packageId, entry, label) {
     soundRadius: Number.isInteger(entry.soundRadius) ? Math.clamp(entry.soundRadius, ...L.soundRadius) : null,
     category: (typeof entry.category === "string") ? entry.category.trim().slice(0, L.category) : "",
     tags,
+    ...(guide && { guide }),
     source: packageId
   };
 }

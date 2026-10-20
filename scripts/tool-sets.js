@@ -6,7 +6,8 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { ANIMATIONS, BOOK_APP_ID, MODULE_ID, SETTING_TOOL_SETS, TOOL_SETS_APP_ID } from "./constants.js";
+import { ANIMATIONS, MODULE_ID, SETTING_TOOL_SETS, TOOL_SETS_APP_ID } from "./constants.js";
+import { guideChanged } from "./guide.js";
 import { refFromUuid } from "./resources.js";
 
 /**
@@ -93,7 +94,8 @@ export function removeTools(packageId) {
   if ( contributed.delete(packageId) ) toolSetsChanged();
 }
 
-/** The Tool Sets window and the Resource Book show the sets, so both follow every change to them. */
+/** The Tool Sets window, the Resource Book and the Field Guide show the sets, so all follow every change to them. */
 export function toolSetsChanged() {
-  for ( const id of [TOOL_SETS_APP_ID, BOOK_APP_ID] ) foundry.applications.instances.get(id)?.render();
+  foundry.applications.instances.get(TOOL_SETS_APP_ID)?.render();
+  guideChanged();
 }

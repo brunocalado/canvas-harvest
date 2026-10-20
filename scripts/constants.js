@@ -17,6 +17,7 @@ export const TEMPLATE_PATH = `modules/${MODULE_ID}/templates`;
 // Window ids, for the files that re-render a window without importing its class.
 export const BOOK_APP_ID = `${MODULE_ID}-book`;
 export const TOOL_SETS_APP_ID = `${MODULE_ID}-tool-sets`;
+export const GUIDE_APP_ID = `${MODULE_ID}-guide`;
 export const SFX_PATH = `modules/${MODULE_ID}/assets/sfx`;
 
 export const SETTING_THEME = "theme";
@@ -24,6 +25,9 @@ export const SETTING_RESOURCES = "resources";
 export const SETTING_RESOURCE_EDITS = "resourceEdits";
 export const SETTING_TOOL_SETS = "toolSets";
 export const SETTING_TOOL_WHISPER = "toolWhisper";
+export const SETTING_GUIDE_VISIBILITY = "guideVisibility";
+export const SETTING_GUIDE_FOUND = "guideFound";
+export const SETTING_GUIDE_FIELDS = "guideFields";
 export const THEMES = ["wilds", "forge"];
 // How a strike looks and sounds — chosen per Resource, independent of what it gives.
 export const ANIMATIONS = ["strike", "chop", "gather", "carve"];
@@ -47,6 +51,12 @@ export const RESOURCE_LIMITS = {
   soundRadius: [1, 60]
 };
 export const ANIMATION_ICONS = { strike: "fa-pickaxe", chop: "fa-axe", gather: "fa-hand-holding-seedling", carve: "fa-knife" };
+// Always listed; listed as an unnamed silhouette until the party finds it; never listed.
+export const GUIDE_STATES = ["shown", "discover", "hidden"];
+export const GUIDE_STATE_ICONS = { shown: "fa-eye", discover: "fa-eye-low-vision", hidden: "fa-eye-slash" };
+// What a Field Guide entry may show players; the GM switches each on or off for the whole world.
+export const GUIDE_FIELDS = ["tools", "drops", "chances", "strikes"];
+export const GUIDE_FIELD_ICONS = { tools: "fa-toolbox", drops: "fa-box-open", chances: "fa-percent", strikes: "fa-burst" };
 export const DEFAULT_RESOURCE_IMG = "icons/commodities/stone/ore-chunk-iron-black.webp";
 
 // A strike is three blows; the drops leave the spot when the third lands.
