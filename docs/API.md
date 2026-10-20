@@ -437,6 +437,13 @@ Opens the Resource Book, or brings it forward. With `resource`, a resource id, t
 resource, as if the GM had picked it in the list; if the book holds unsaved edits to another one, the GM
 is asked first. An unknown id warns and resolves `false`.
 
+### `openGuide({ resource })` → `Promise<FieldGuide>`
+
+Opens the Field Guide, or brings it forward, for any user. With `resource`, a resource id, the guide
+shows that resource on its Resources tab. An id the guide doesn't list (hidden by the GM, or no such
+resource) opens it with nothing selected and no warning, so a call can't tell a hidden resource from
+a missing one.
+
 ### `createSpot(args)` → `Promise<RegionDocument|false>` *(GM only)*
 
 Makes a spot: a square or rectangular Region carrying the Harvest Spot behavior, full. Its visibility is

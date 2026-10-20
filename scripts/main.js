@@ -6,7 +6,7 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { MODULE_ID, RESOURCE_DRAG_TYPE, SPOT_TYPE } from "./constants.js";
+import { GUIDE_APP_ID, MODULE_ID, RESOURCE_DRAG_TYPE, SPOT_TYPE } from "./constants.js";
 import { registerSettings } from "./settings.js";
 import { api } from "./api.js";
 import { ResourceBook } from "./apps/resource-book.js";
@@ -68,24 +68,41 @@ Hooks.on("updateRegionBehavior", (behavior, changes, options) => {
 });
 
 /**
- * The Resources button at the top of the Items directory, for GMs.
+ * The buttons at the top of the Items directory: the Field Guide for everyone, and the Resource Book
+ * beside it for GMs.
  * @param {foundry.applications.sidebar.tabs.ItemDirectory} app
  * @param {HTMLElement} html
  */
 Hooks.on("renderItemDirectory", (app, html) => {
-  if ( !game.user.isGM ) return;
   // A partial re-render can leave the header in place, buttons included.
   const header = html.querySelector(".directory-header");
   if ( !header || header.querySelector(`.${MODULE_ID}.ch-directory-buttons`) ) return;
   const row = document.createElement("div");
   row.className = `${MODULE_ID} ch-directory-buttons`;
-  const button = document.createElement("button");
-  button.type = "button";
-  button.innerHTML = `<i class="fa-solid fa-book-open" inert></i> <span>${game.i18n.localize("CANVASHARVEST.Book.Open")}</span>`;
-  button.addEventListener("click", () => api.openBook());
-  row.append(button);
+  const addButton = (icon, label, onClick) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.innerHTML = `<i class="fa-solid ${icon}" inert></i> <span>${game.i18n.localize(label)}</span>`;
+    button.addEventListener("click", onClick);
+    row.append(button);
+  };
+  if ( game.user.isGM ) addButton("fa-book-open", "CANVASHARVEST.Book.Open", () => api.openBook());
+  addButton("fa-leaf", "CANVASHARVEST.Guide.Open", () => api.openGuide());
   header.querySelector(".header-actions")?.after(row);
 });
+
+/**
+ * The Field Guide marks the tools the selected token carries, so it follows a change of token and
+ * the items coming and going on that token's actor. A burst of changes renders it once.
+ */
+const renderGuide = foundry.utils.debounce(() => foundry.applications.instances.get(GUIDE_APP_ID)?.render(), 100);
+Hooks.on("controlToken", renderGuide);
+for ( const hook of ["createItem", "deleteItem"] ) {
+  Hooks.on(hook, item => {
+    const guide = foundry.applications.instances.get(GUIDE_APP_ID);
+    if ( guide && item.parent && (item.parent === guide.actor) ) renderGuide();
+  });
+}
 
 /**
  * The book shows each tool and drop by its item's current name and image, so it follows a rename or a

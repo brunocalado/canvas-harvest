@@ -6,8 +6,9 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
+import { FieldGuide } from "./apps/field-guide.js";
 import { ResourceBook } from "./apps/resource-book.js";
-import { MODULE_ID, RESOURCE_LIMITS, SPOT_TYPE } from "./constants.js";
+import { GUIDE_APP_ID, MODULE_ID, RESOURCE_LIMITS, SPOT_TYPE } from "./constants.js";
 import { requestHarvest } from "./harvest.js";
 import { readPalette } from "./helpers.js";
 import {
@@ -91,6 +92,21 @@ export const api = {
     // On a book not rendered yet this only sets the draft; the forced render below shows it.
     if ( shown ) await app.showResource(shown);
     await app.render({ force: true });
+    if ( existing ) app.bringToFront();
+    return app;
+  },
+
+  /**
+   * Open the Field Guide, or bring it forward. Any user.
+   * @param {object} [options]
+   * @param {string} [options.resource]   a resource id to show in it; one the guide doesn't list opens it
+   *   with nothing selected, and no warning, so a call can't tell a hidden resource from a missing one
+   * @returns {Promise<FieldGuide>}
+   */
+  async openGuide({ resource } = {}) {
+    const existing = foundry.applications.instances.get(GUIDE_APP_ID);
+    const app = existing ?? new FieldGuide();
+    await app.showResource(resource);
     if ( existing ) app.bringToFront();
     return app;
   },

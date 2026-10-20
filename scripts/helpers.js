@@ -172,6 +172,27 @@ export function sourceLabel(source) {
 }
 
 /**
+ * The group a resource sits in: the GM's category, or its animation's verb.
+ * @param {Resource} r
+ * @returns {string}
+ */
+export function groupLabel(r) {
+  return r.category.trim() || game.i18n.localize(`CANVASHARVEST.Verb.${r.animation}`);
+}
+
+/**
+ * A drop's chance of coming up on one strike: "25%". A share that rounds to nothing still can come
+ * up, so it reads "<1%" rather than "0%".
+ * @param {number} weight
+ * @param {number} total   every drop's weight added up
+ * @returns {string}
+ */
+export function chance(weight, total) {
+  const percent = Math.round((weight / total) * 100);
+  return (percent < 1) ? "<1%" : `${percent}%`;
+}
+
+/**
  * Text folded for search: lower case, accents dropped, so "veio" finds "Véio".
  * @param {string} text
  * @returns {string}
@@ -242,21 +263,25 @@ export function restoreCaret(root, caret) {
 /**
  * The list groups a user closed. Kept per browser: it is a convenience, and storage may be missing
  * or blocked, in which case every group starts open.
+ * @param {string} [key]   the storage key; each window that folds groups keeps its own
  * @returns {Set<string>}
  */
-export function getCollapsed() {
+export function getCollapsed(key = `${MODULE_ID}.collapsed`) {
   try {
-    const stored = JSON.parse(localStorage.getItem(`${MODULE_ID}.collapsed`));
+    const stored = JSON.parse(localStorage.getItem(key));
     return new Set(Array.isArray(stored) ? stored : []);
   } catch {
     return new Set();
   }
 }
 
-/** @param {Set<string>} collapsed */
-export function setCollapsed(collapsed) {
+/**
+ * @param {Set<string>} collapsed
+ * @param {string} [key]
+ */
+export function setCollapsed(collapsed, key = `${MODULE_ID}.collapsed`) {
   try {
-    localStorage.setItem(`${MODULE_ID}.collapsed`, JSON.stringify([...collapsed]));
+    localStorage.setItem(key, JSON.stringify([...collapsed]));
   } catch {
     // Storage is blocked: the state lasts as long as the window.
   }

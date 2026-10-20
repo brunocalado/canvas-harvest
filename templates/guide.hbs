@@ -1,0 +1,192 @@
+<div class="ch-guide-body" data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}">
+  {{#*inline "head"}}
+  <summary>
+    <i class="fa-solid fa-chevron-right ch-chevron" inert></i>
+    {{#if icon}}<i class="fa-solid {{icon}} ch-group-icon" inert></i>{{/if}}
+    <span class="ch-group-label">{{label}}</span>
+    <span class="ch-group-count">{{count}}</span>
+  </summary>
+  {{/inline}}
+  {{!-- A resource's picture; an unknown one is a silhouette, and a webm stays on its first frame. --}}
+  {{#*inline "picture"}}
+  {{#if video}}
+  <video src="{{img}}" {{#if known}}autoplay loop{{else}}class="ch-silhouette" preload="auto"{{/if}} muted playsinline disablepictureinpicture></video>
+  {{else}}
+  <img src="{{img}}" alt="" {{#unless known}}class="ch-silhouette"{{/unless}}>
+  {{/if}}
+  {{/inline}}
+  {{#*inline "toolSlot"}}
+  <button type="button" class="ch-slot ch-round {{#if carried}}ch-carried{{/if}}" data-action="selectTool" data-uuid="{{uuid}}"
+          aria-label="{{tip}}" data-tooltip-text="{{tip}}">
+    <img src="{{img}}" alt="">
+  </button>
+  {{/inline}}
+
+  {{!-- Core's tab handling reads data-action, data-group and data-tab. --}}
+  <nav class="tabs ch-tabs" aria-roledescription="{{localize "SHEETS.FormNavLabel"}}">
+    {{#each tabs}}
+    <a class="ch-tab {{cssClass}}" data-action="tab" data-group="{{group}}" data-tab="{{id}}">
+      <i class="{{icon}}" inert></i>
+      <span>{{localize label}}</span>
+    </a>
+    {{/each}}
+    <span class="ch-found-count">{{found}}</span>
+  </nav>
+
+  <div class="ch-guide-panes">
+    <aside class="ch-guide-list">
+      <div class="ch-search">
+        <i class="fa-solid fa-magnifying-glass" inert></i>
+        <input type="text" name="search" value="{{query}}" autocomplete="off"
+               placeholder="{{localize "CANVASHARVEST.Guide.Search"}}" aria-label="{{localize "CANVASHARVEST.Guide.Search"}}">
+      </div>
+      <div class="tab ch-list-scroll {{#if tabs.resources.active}}active{{/if}}" data-group="main" data-tab="resources">
+        {{#each groups}}
+        <details class="ch-group" data-group="{{key}}" {{#unless collapsed}}open{{/unless}}>
+          {{> head}}
+          <ol>
+            {{#each entries}}
+            <li data-search="{{search}}">
+              <button type="button" class="ch-entry {{#if active}}ch-active{{/if}} {{#unless known}}ch-unknown{{/unless}}"
+                      data-action="selectResource" data-resource-id="{{id}}">
+                <span class="ch-entry-thumb">{{> picture}}</span>
+                <span>{{#if known}}{{name}}{{else}}???{{/if}}</span>
+              </button>
+              {{#if carried}}<i class="fa-solid fa-check ch-row-marker ch-carried-mark" inert></i>{{/if}}
+            </li>
+            {{/each}}
+          </ol>
+        </details>
+        {{else}}
+        <p class="ch-empty">{{localize "CANVASHARVEST.Guide.Empty"}}</p>
+        {{/each}}
+        <p class="ch-empty ch-no-match" hidden>{{localize "CANVASHARVEST.Book.NoMatch"}}</p>
+      </div>
+      {{#if tabs.tools}}
+      <div class="tab ch-list-scroll {{#if tabs.tools.active}}active{{/if}}" data-group="main" data-tab="tools">
+        {{#each toolGroups}}
+        <details class="ch-group" data-group="{{key}}" {{#unless collapsed}}open{{/unless}}>
+          {{> head}}
+          <ol>
+            {{#each entries}}
+            <li data-search="{{search}}">
+              <button type="button" class="ch-entry {{#if active}}ch-active{{/if}} {{#if carried}}ch-carried{{/if}}"
+                      data-action="selectTool" data-uuid="{{uuid}}">
+                <span class="ch-entry-thumb"><img src="{{img}}" alt=""></span>
+                <span>{{name}}</span>
+              </button>
+              {{#if carried}}<i class="fa-solid fa-check ch-row-marker ch-carried-mark" inert></i>{{/if}}
+            </li>
+            {{/each}}
+          </ol>
+        </details>
+        {{else}}
+        <p class="ch-empty">{{localize "CANVASHARVEST.Guide.Empty"}}</p>
+        {{/each}}
+        <p class="ch-empty ch-no-match" hidden>{{localize "CANVASHARVEST.Book.NoMatch"}}</p>
+      </div>
+      {{/if}}
+    </aside>
+
+    <section class="ch-guide-detail ch-backdrop">
+      <canvas class="ch-fx" aria-hidden="true"></canvas>
+      <div class="tab ch-guide-page {{#if tabs.resources.active}}active{{/if}}" data-group="main" data-tab="resources">
+        {{#with resource}}
+        {{#if known}}
+        <div class="ch-guide-head">
+          <div class="ch-seal">{{> picture}}</div>
+          <div class="ch-guide-title">
+            <h2>{{name}}</h2>
+            <div class="ch-pills">
+              <span class="ch-pill"><i class="fa-solid {{icon}}" inert></i> {{verb}}</span>
+              <span class="ch-pill">{{category}}</span>
+              {{#if strikes}}<span class="ch-pill ch-strikes"><i class="fa-solid fa-burst" inert></i> {{strikes}}</span>{{/if}}
+            </div>
+          </div>
+        </div>
+        {{#if @root.fields.tools}}
+        <section class="ch-guide-section ch-worked-with">
+          <h3>{{localize "CANVASHARVEST.Guide.WorkedWith"}}</h3>
+          {{#each toolRows}}
+          <div class="ch-tool-row">
+            <span class="ch-tool-row-label">{{#if icon}}<i class="fa-solid {{icon}}" inert></i> {{/if}}{{label}}</span>
+            <div class="ch-tool-slots">{{#each tools}}{{> toolSlot}}{{/each}}</div>
+          </div>
+          {{else}}
+          <p><span class="ch-pill ch-lit"><i class="fa-solid fa-hand" inert></i> {{localize "CANVASHARVEST.Guide.BareHands"}}</span></p>
+          {{/each}}
+          {{#if carryNote}}
+          <p class="ch-hint {{#if carryNote.carried}}ch-yes{{else}}ch-no{{/if}}">
+            <i class="fa-solid {{#if carryNote.carried}}fa-check{{else}}fa-xmark{{/if}}" inert></i> {{carryNote.text}}
+          </p>
+          {{/if}}
+        </section>
+        {{/if}}
+        {{#if @root.fields.drops}}
+        <section class="ch-guide-section ch-yields">
+          <h3>{{localize "CANVASHARVEST.Guide.Yields"}}</h3>
+          <div class="ch-guide-drops">
+            {{#each drops}}
+            <div class="ch-guide-drop">
+              <div class="ch-slot"><img src="{{img}}" alt=""></div>
+              <div class="ch-guide-drop-text">
+                <b>{{name}}</b>
+                <small>{{amount}}{{#if @root.fields.chances}} · {{share}}{{/if}}</small>
+                {{#if @root.fields.chances}}<span class="ch-chance"><i style="width: {{percent}}%"></i></span>{{/if}}
+              </div>
+            </div>
+            {{/each}}
+          </div>
+        </section>
+        {{/if}}
+        {{#if withheld}}<p class="ch-hint ch-withheld">{{localize "CANVASHARVEST.Guide.Withheld"}}</p>{{/if}}
+        {{else}}
+        <div class="ch-guide-unknown">
+          <div class="ch-seal">{{> picture}}</div>
+          <h2>???</h2>
+          <span class="ch-pill">{{category}}</span>
+          <p class="ch-hint">{{localize "CANVASHARVEST.Guide.Unknown"}}</p>
+        </div>
+        {{/if}}
+        {{/with}}
+      </div>
+      {{#if tabs.tools}}
+      <div class="tab ch-guide-page {{#if tabs.tools.active}}active{{/if}}" data-group="main" data-tab="tools">
+        {{#with tool}}
+        <div class="ch-guide-head">
+          <div class="ch-seal"><img src="{{img}}" alt=""></div>
+          <div class="ch-guide-title">
+            <h2>{{name}}</h2>
+            <div class="ch-pills">
+              {{#each sets}}<span class="ch-pill"><i class="fa-solid {{icon}}" inert></i> {{label}}</span>{{/each}}
+              {{#if carried}}<span class="ch-pill ch-lit"><i class="fa-solid fa-check" inert></i> {{localize "CANVASHARVEST.Guide.Carried"}}</span>{{/if}}
+            </div>
+          </div>
+        </div>
+        <section class="ch-guide-section">
+          <h3>{{localize "CANVASHARVEST.Guide.Opens"}}</h3>
+          <div class="ch-guide-cards">
+            {{#each opens}}
+            {{#if known}}
+            <button type="button" class="ch-guide-card" data-action="selectResource" data-resource-id="{{id}}">
+              {{> picture}}<span>{{name}}</span>
+            </button>
+            {{else}}
+            <div class="ch-guide-card ch-unknown">{{> picture}}<span>???</span></div>
+            {{/if}}
+            {{/each}}
+          </div>
+          {{#if hasUnknown}}<p class="ch-hint">{{unknownHint}}</p>{{/if}}
+        </section>
+        {{/with}}
+        {{#if bareHands}}
+        <section class="ch-guide-section">
+          <h3><i class="fa-solid fa-hand" inert></i> {{localize "CANVASHARVEST.Guide.NoToolNeeded"}}</h3>
+          <p class="ch-hint">{{bareHands}}</p>
+        </section>
+        {{/if}}
+      </div>
+      {{/if}}
+    </section>
+  </div>
+</div>

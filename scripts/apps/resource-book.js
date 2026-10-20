@@ -10,8 +10,8 @@ import {
   ANIMATION_ICONS, ANIMATIONS, BOOK_APP_ID, MODULE_ID, RESOURCE_DRAG_TYPE, RESOURCE_LIMITS, SETTING_SOUND_RADIUS, TEMPLATE_PATH, THEMES
 } from "../constants.js";
 import {
-  bindSearch, confirmDialog, droppedItemRef, filterGroups, getCollapsed, getTheme, help, isWebm, liveRef, readCaret, restoreCaret,
-  searchKey, setCollapsed, SingleWindow, sourceLabel
+  bindSearch, chance, confirmDialog, droppedItemRef, filterGroups, getCollapsed, getTheme, groupLabel, help, isWebm, liveRef, readCaret,
+  restoreCaret, searchKey, setCollapsed, SingleWindow, sourceLabel
 } from "../helpers.js";
 import { AmbientFX } from "../ambient-fx.js";
 import { playCue } from "../sound.js";
@@ -22,15 +22,6 @@ import { ToolSetsConfig } from "./tool-sets-config.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
- * The group a resource sits in within its source: the GM's category, or its animation's verb.
- * @param {Resource} r
- * @returns {string}
- */
-function groupLabel(r) {
-  return r.category.trim() || game.i18n.localize(`CANVASHARVEST.Verb.${r.animation}`);
-}
-
-/**
  * The key of a resource's group within its source. A category spelled like an animation's verb, in
  * any case, shares that animation's group. Package ids can't contain ":", so it never clashes with a source.
  * @param {Resource} r
@@ -38,18 +29,6 @@ function groupLabel(r) {
  */
 function groupKey(r) {
   return `${r.source}::${groupLabel(r).toLocaleLowerCase()}`;
-}
-
-/**
- * A drop's chance of coming up on one strike, as the GM reads it: "25%". A share that rounds to
- * nothing still can come up, so it reads "<1%" rather than "0%".
- * @param {number} weight
- * @param {number} total   every drop's weight added up
- * @returns {string}
- */
-function chance(weight, total) {
-  const percent = Math.round((weight / total) * 100);
-  return (percent < 1) ? "<1%" : `${percent}%`;
 }
 
 /**

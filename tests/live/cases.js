@@ -208,6 +208,45 @@ const removeStrikers = ({ gm, ev }) => ev(gm, `await canvas.scene.deleteEmbedded
     canvas.scene.tokens.filter(t => t.name === "CH Test Striker").map(t => t.id));
   await game.actors.getName("CH Test Striker")?.delete();`);
 
+/** Ids of the resources the Field Guide cases add, each a randomID-shaped world id. */
+const GUIDE = { secret: "chGuideSecret01", hidden: "chGuideHidden01", bold: "chGuideBold0001" };
+
+/**
+ * Add three world resources the guide treats differently, all taking the test pick: "CH Secret"
+ * waits to be found, "CH Hidden" is never listed, and a known one is named with HTML.
+ * @param {object} t
+ */
+function addGuideResources({ gm, pl, ev, until, ids }) {
+  return ev(gm, `const ref = i => ({ uuid: i.uuid, name: i.name, img: i.img, type: i.type, sources: [i.uuid] });
+    const ore = fromUuidSync(${JSON.stringify(ids.ore)}); const pick = fromUuidSync(${JSON.stringify(ids.pick)});
+    const base = { img: "icons/commodities/stone/ore-chunk-iron-black.webp", verb: "", animation: "strike", toolSets: [],
+      tools: [ref(pick)], drops: [{ item: ref(ore), weight: 100, min: 1, max: 1 }], strikes: 10, sound: "", category: "CH Guide", tags: [] };
+    const ids = ${JSON.stringify(GUIDE)};
+    const list = game.settings.get("canvas-harvest", "resources").filter(r => !Object.values(ids).includes(r.id));
+    list.push({ ...base, id: ids.secret, name: "CH Secret" }, { ...base, id: ids.hidden, name: "CH Hidden" },
+      { ...base, id: ids.bold, name: "<b>CH Bold</b>" });
+    await game.settings.set("canvas-harvest", "resources", list);
+    await game.settings.set("canvas-harvest", "guideVisibility", { ...game.settings.get("canvas-harvest", "guideVisibility"),
+      [ids.secret]: "discover", [ids.hidden]: "hidden", [ids.bold]: "shown" });
+    await game.settings.set("canvas-harvest", "guideFound", game.settings.get("canvas-harvest", "guideFound").filter(id => !Object.values(ids).includes(id)));`)
+    .then(() => until(pl, `game.settings.get("canvas-harvest", "resources").some(r => r.id === ${JSON.stringify(GUIDE.bold)})
+      && game.settings.get("canvas-harvest", "guideVisibility")[${JSON.stringify(GUIDE.hidden)}] === "hidden"`));
+}
+
+/**
+ * Take the Field Guide cases' resources and states away again.
+ * @param {object} t
+ */
+function removeGuideResources({ gm, ev }) {
+  return ev(gm, `const ids = Object.values(${JSON.stringify(GUIDE)});
+    await game.settings.set("canvas-harvest", "resources", game.settings.get("canvas-harvest", "resources").filter(r => !ids.includes(r.id)));
+    const vis = { ...game.settings.get("canvas-harvest", "guideVisibility") };
+    for ( const id of ids ) delete vis[id];
+    await game.settings.set("canvas-harvest", "guideVisibility", vis);
+    await game.settings.set("canvas-harvest", "guideFound", game.settings.get("canvas-harvest", "guideFound").filter(id => !ids.includes(id)));
+    await game.settings.set("canvas-harvest", "guideFields", { tools: true, drops: true, chances: true, strikes: true });`);
+}
+
 export const cases = [
   {
     name: "a strike spends one, drops the item and posts the card",
@@ -1010,6 +1049,132 @@ export const cases = [
         assert(shown.includes("A number is out of range."), `a reach of 61 was not refused: ${JSON.stringify(shown)}`);
       } finally {
         await setReach(t, reach);
+      }
+    }
+  },
+  {
+    name: "guide: the guide's state never edits a package's resource, and bad states read as discover",
+    async run(t) {
+      const { gm, ev, ids } = t;
+      const r = await ev(gm, `const guide = await import("/modules/canvas-harvest/scripts/guide.js");
+        const out = {};
+        out.accepted = CanvasHarvest.registerResources("ch-test", [
+          { id: "bogus", name: "CH Bogus", guide: "bogus", drops: [{ uuid: ${JSON.stringify(ids.ore)} }] },
+          { id: "known", name: "CH Known", guide: "shown", drops: [{ uuid: ${JSON.stringify(ids.ore)} }] }]);
+        out.bogus = CanvasHarvest.getResource("ch-test.bogus");
+        out.knownState = guide.guideState(CanvasHarvest.getResource("ch-test.known"));
+        out.missing = guide.guideState({ id: "chNothing000001" });
+        await guide.setGuideState(["ch-test.bogus"], "shown");
+        out.afterEye = { edited: CanvasHarvest.getResource("ch-test.bogus").edited ?? false,
+          inEdits: "ch-test.bogus" in game.settings.get("canvas-harvest", "resourceEdits"), state: guide.guideState(CanvasHarvest.getResource("ch-test.bogus")) };
+        const vis = { ...game.settings.get("canvas-harvest", "guideVisibility"), "ch-test.bogus": "nonsense" };
+        await game.settings.set("canvas-harvest", "guideVisibility", vis);
+        out.stored = guide.guideState(CanvasHarvest.getResource("ch-test.bogus"));
+        await game.settings.set("canvas-harvest", "guideFields", { tools: true, drops: false, chances: true, strikes: true });
+        out.fields = guide.guideFields();
+        await game.settings.set("canvas-harvest", "guideFields", { tools: true, drops: true, chances: true, strikes: true });
+        delete vis["ch-test.bogus"];
+        await game.settings.set("canvas-harvest", "guideVisibility", vis);
+        CanvasHarvest.unregisterResources("ch-test");
+        return out;`);
+      assert(r.accepted === 2, `registerResources accepted ${r.accepted} of 2`);
+      assert(r.bogus && !("guide" in r.bogus), `the bogus guide state was kept: ${JSON.stringify(r.bogus?.guide)}`);
+      assert(r.knownState === "shown", `a package's "shown" read as ${r.knownState}`);
+      assert(r.missing === "discover" && r.stored === "discover", `missing and bad states read as ${r.missing}, ${r.stored}`);
+      assert(!r.afterEye.edited && !r.afterEye.inEdits && r.afterEye.state === "shown", `the eye edited the resource: ${JSON.stringify(r.afterEye)}`);
+      assert(r.fields.chances === false, "chances show without drops");
+    }
+  },
+  {
+    name: "guide: players get the Field Guide button, GMs both",
+    async run(t) {
+      const { gm, pl, ev } = t;
+      const count = page => ev(page, `ui.items.activate(); await ui.items.render({ force: true }); await new Promise(r => setTimeout(r, 500));
+        return document.querySelectorAll("#items .ch-directory-buttons button").length;`);
+      const [g, p] = [await count(gm), await count(pl)];
+      assert(g === 2, `the GM has ${g} buttons`);
+      assert(p === 1, `the player has ${p} buttons`);
+    }
+  },
+  {
+    name: "guide: an unknown resource is a nameless silhouette, a hidden one is absent, and names stay text",
+    async run(t) {
+      const { pl, ev, notes } = t;
+      await addGuideResources(t);
+      try {
+        const r = await ev(pl, `const guide = await CanvasHarvest.openGuide({ resource: ${JSON.stringify(GUIDE.secret)} });
+          await new Promise(r => setTimeout(r, 600));
+          const el = () => document.querySelector("#canvas-harvest-guide");
+          const out = { secretSelected: !!el().querySelector('.ch-entry.ch-active[data-resource-id=${JSON.stringify(GUIDE.secret)}]') };
+          const html = [el().outerHTML];
+          await guide.render({ tab: "tools" }); await new Promise(r => setTimeout(r, 400));
+          html.push(el().outerHTML);
+          out.secretCard = !!el().querySelector('[data-tab="tools"] .ch-guide-card.ch-unknown');
+          await CanvasHarvest.openGuide({ resource: ${JSON.stringify(GUIDE.bold)} }); await new Promise(r => setTimeout(r, 400));
+          html.push(el().outerHTML);
+          out.boldText = el().querySelector(".ch-guide-title h2")?.textContent;
+          out.boldElement = [...el().querySelectorAll("b")].some(b => b.textContent === "CH Bold");
+          out.secret = html.some(h => h.includes("CH Secret"));
+          out.hidden = html.some(h => h.includes("CH Hidden") || h.includes(${JSON.stringify(GUIDE.hidden)}));
+          await CanvasHarvest.openGuide({ resource: ${JSON.stringify(GUIDE.hidden)} }); await new Promise(r => setTimeout(r, 400));
+          out.hiddenActive = !!el().querySelector('.ch-guide-list [data-tab="resources"] .ch-entry.ch-active');
+          await guide.close();
+          return out;`);
+        assert(r.secretSelected, "openGuide did not select the listed, unknown resource");
+        assert(r.secretCard, "the Pick's Opens lacks the unknown resource's silhouette");
+        assert(!r.secret, "the unknown resource's name reached the player's DOM");
+        assert(!r.hidden, "the hidden resource reached the player's DOM");
+        assert(r.boldText === "<b>CH Bold</b>" && !r.boldElement, `the HTML name rendered as markup: ${JSON.stringify(r)}`);
+        assert(!r.hiddenActive, "openGuide with a hidden id selected an entry");
+        assert(!(await notes(pl)).length, "openGuide with a hidden id warned");
+      } finally {
+        await removeGuideResources(t);
+      }
+    }
+  },
+  {
+    name: "guide: the GM's fields hide their sections",
+    async run(t) {
+      const { gm, pl, ev, until } = t;
+      await addGuideResources(t);
+      try {
+        await ev(pl, `await CanvasHarvest.openGuide({ resource: ${JSON.stringify(GUIDE.bold)} });`);
+        await until(pl, `!!document.querySelector('#canvas-harvest-guide .ch-chance')`);
+        await ev(gm, `await game.settings.set("canvas-harvest", "guideFields", { tools: false, drops: true, chances: false, strikes: false });`);
+        await until(pl, `!document.querySelector('#canvas-harvest-guide .ch-chance')`);
+        const r = await ev(pl, `const el = document.querySelector("#canvas-harvest-guide");
+          return { tools: !!el.querySelector('[data-tab="tools"]'), worked: !!el.querySelector(".ch-worked-with"),
+            strikes: !!el.querySelector(".ch-strikes"), yields: !!el.querySelector(".ch-yields") };`);
+        assert(!r.tools && !r.worked, "with tools off, the Tools tab or Worked with is still there");
+        assert(!r.strikes, "with strikes off, the strikes pill is still there");
+        assert(r.yields, "Yields went with the other fields");
+        await ev(gm, `await game.settings.set("canvas-harvest", "guideFields", { tools: false, drops: false, chances: true, strikes: true });`);
+        await until(pl, `!!document.querySelector('#canvas-harvest-guide .ch-withheld')`);
+      } finally {
+        await ev(pl, `await foundry.applications.instances.get("canvas-harvest-guide")?.close();`);
+        await removeGuideResources(t);
+      }
+    }
+  },
+  {
+    name: "guide: carried marks follow the selected token",
+    async run(t) {
+      const { gm, pl, ev, until, ids } = t;
+      await addGuideResources(t);
+      const pickRow = `document.querySelector('#canvas-harvest-guide [data-tab="tools"] .ch-entry[data-uuid=${JSON.stringify(ids.pick)}]')`;
+      try {
+        await ev(pl, `fromUuidSync(${JSON.stringify(ids.token)}).object.control({ releaseOthers: true });
+          const guide = await CanvasHarvest.openGuide({ resource: ${JSON.stringify(GUIDE.bold)} });
+          await guide.render({ tab: "tools" });`);
+        await until(pl, `${pickRow} && !${pickRow}.classList.contains("ch-carried")`);
+        await ev(gm, `const i = fromUuidSync(${JSON.stringify(ids.pick)});
+          await game.actors.get(${JSON.stringify(ids.actor)}).createEmbeddedDocuments("Item", [{ name: i.name, type: i.type }]);`);
+        await until(pl, `${pickRow}?.classList.contains("ch-carried")`);
+        await ev(gm, `const a = game.actors.get(${JSON.stringify(ids.actor)}); await a.deleteEmbeddedDocuments("Item", a.items.map(i => i.id));`);
+        await until(pl, `${pickRow} && !${pickRow}.classList.contains("ch-carried")`);
+      } finally {
+        await ev(pl, `canvas.tokens.releaseAll(); await foundry.applications.instances.get("canvas-harvest-guide")?.close();`);
+        await removeGuideResources(t);
       }
     }
   }

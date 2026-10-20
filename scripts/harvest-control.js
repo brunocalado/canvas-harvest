@@ -383,11 +383,13 @@ export class HarvestControl extends PIXI.Container {
    * a right drag that starts on the medallion pans the map, as anywhere else.
    */
   #onRightClick(event) {
-    if ( !game.user.isGM ) return;
     if ( event.nativeEvent && (event.nativeEvent.target.id !== canvas.app.view.id) ) return;
     event.stopPropagation();
     const resource = this.behavior.system.resource;
-    if ( resource ) api.openBook({ resource });
+    if ( !resource ) return;
+    // A player reads the spot's resource in the Field Guide, which shows only what the party knows of it.
+    if ( game.user.isGM ) api.openBook({ resource });
+    else api.openGuide({ resource });
   }
 }
 

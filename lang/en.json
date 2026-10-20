@@ -121,6 +121,33 @@
       "SoundRadiusHint": "How far this resource's harvests are heard, in grid spaces. Dimmed, it follows the reach set in Harvest Sounds.",
       "ResetReach": "Use the reach set in Harvest Sounds"
     },
+    "Guide": {
+      "Title": "Field Guide",
+      "Open": "Field Guide",
+      "Tab": {
+        "resources": "Resources",
+        "tools": "Tools"
+      },
+      "Search": "Search the guide",
+      "Found": "{known} of {listed} found",
+      "WorkedWith": "Worked with",
+      "AnyTool": "Any {verb} tool",
+      "OwnTools": "One of these",
+      "BareHands": "Bare hands",
+      "Yields": "Yields",
+      "Strikes": "{count} strikes",
+      "Opens": "Opens",
+      "OpensUnknown": "The ??? are resources this tool works that nobody in the party has found yet.",
+      "NoToolNeeded": "No tool needed",
+      "UnknownCount": "{count} not found yet",
+      "Unknown": "Not found yet. Harvest one, or try to, and it is written down here.",
+      "Carried": "Carried",
+      "CarriesOne": "Your token carries one of these.",
+      "CarriesNone": "Your token carries none of these.",
+      "Special": "Special",
+      "Withheld": "The GM keeps the rest to themselves.",
+      "Empty": "Nothing in the guide yet."
+    },
     "Errors": {
       "GMOnly": "Only a GM can do that.",
       "NoName": "Give the resource a name.",

@@ -1,5 +1,6 @@
 # Unreleased
 
+- [Added] Field Guide: players open it from the Items directory, or by right-clicking a spot, to see the resources they know, the tools each takes and what it gives.
 - [Added] Packages can suggest whether each resource they register shows in the Field Guide (`guide` in registerResources).
 
 # 0.0.3

@@ -1,0 +1,464 @@
+/*!
+ * Canvas Harvest
+ * 2026 https://github.com/brunocalado
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ */
+
+.canvas-harvest.ch-guide {
+  .ch-guide-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The tabs, as the Tool Sets draw them, with how much the party has found at the far end. */
+  .ch-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    margin: 0;
+    padding: 10px 14px 0;
+    background: var(--ch-bg-1);
+    border-bottom: 1px solid var(--ch-metal-hi);
+  }
+
+  .ch-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px 8px;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: var(--ch-radius) var(--ch-radius) 0 0;
+    color: var(--ch-text-dim);
+    font-family: var(--ch-font-title);
+    font-size: var(--font-size-16);
+    letter-spacing: 0.03em;
+    text-shadow: none;
+    transition: color 150ms, background 150ms, border-color 150ms;
+
+    > i {
+      font-size: var(--font-size-14);
+    }
+
+    &:hover {
+      color: var(--ch-trim-hi);
+      text-shadow: none;
+    }
+
+    &.active {
+      margin-bottom: -1px;
+      background: linear-gradient(180deg, var(--ch-bg-2), var(--ch-bg-0));
+      border-color: var(--ch-trim);
+      color: var(--ch-trim-hi);
+      text-shadow: 0 0 8px rgba(var(--ch-glow-rgb), 0.6);
+
+      > i {
+        color: var(--ch-glow);
+      }
+    }
+  }
+
+  .ch-found-count {
+    margin-left: auto;
+    padding-bottom: 8px;
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-12);
+  }
+
+  /* One height whatever is selected, so the window doesn't jump as entries are picked. */
+  .ch-guide-panes {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    height: 520px;
+  }
+
+  .ch-guide-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    padding: 10px;
+    background: linear-gradient(180deg, var(--ch-bg-1), var(--ch-bg-0));
+    border-right: 1px solid var(--ch-metal-hi);
+
+    ol {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      position: relative;
+    }
+
+    .ch-empty {
+      color: var(--ch-text-dim);
+      font-style: italic;
+    }
+  }
+
+  /* Core hides the inactive tab; the open one scrolls on its own. The side padding lives inside the
+     scroller, or it would clip the active entry's glow. */
+  .ch-list-scroll.active {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    margin: 0 -10px;
+    padding: 0 10px 4px;
+    overflow-y: auto;
+  }
+
+  .ch-entry {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    height: auto;
+    padding: 3px 26px 3px 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--ch-radius);
+    color: var(--ch-text);
+    text-align: left;
+
+    .ch-entry-thumb {
+      display: flex;
+      flex: none;
+    }
+
+    img,
+    video {
+      flex: none;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--ch-metal-hi);
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    > span:last-child {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &:hover {
+      border-color: var(--ch-metal-hi);
+      background: var(--ch-bg-2);
+    }
+
+    &.ch-active {
+      border-color: var(--ch-glow);
+      background: var(--ch-bg-2);
+      box-shadow: 0 0 8px rgba(var(--ch-glow-rgb), 0.4);
+    }
+
+    &.ch-unknown > span:last-child {
+      color: var(--ch-text-dim);
+      font-style: italic;
+      letter-spacing: 0.15em;
+    }
+  }
+
+  /* A carried tool, or a resource the selected token can work, marked at the row's end. */
+  .ch-row-marker {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    translate: 0 -50%;
+    color: var(--ch-glow);
+    font-size: var(--font-size-11);
+    pointer-events: none;
+  }
+
+  /* An unknown resource: its shape alone, cut out of the dark with the theme's glow on its edge. */
+  .ch-silhouette,
+  .ch-seal .ch-silhouette {
+    filter: brightness(0) drop-shadow(0 0 2px rgba(var(--ch-glow-rgb), 0.8));
+    opacity: 0.7;
+  }
+
+  /* The detail pane keeps the backdrop still; the open page scrolls inside it. */
+  .ch-guide-detail {
+    min-height: 0;
+  }
+
+  .ch-guide-page.active {
+    height: 100%;
+    padding: 16px 18px;
+    overflow-y: auto;
+  }
+
+  .ch-guide-head {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 4px 0 0 4px;
+
+    .ch-seal {
+      flex: none;
+      width: 104px;
+      height: 104px;
+
+      img,
+      video {
+        width: 66px;
+        height: 66px;
+      }
+    }
+  }
+
+  .ch-guide-title {
+    min-width: 0;
+
+    h2 {
+      margin: 0;
+      border: none;
+      color: var(--ch-trim-hi);
+      font-family: var(--ch-font-title);
+      font-size: var(--font-size-28);
+      line-height: 1.1;
+      text-shadow: 0 0 10px rgba(var(--ch-glow-rgb), 0.45);
+    }
+  }
+
+  .ch-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .ch-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 9px;
+    border: 1px solid var(--ch-metal-hi);
+    border-radius: 99px;
+    background: var(--ch-bg-0);
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-12);
+
+    &.ch-lit {
+      border-color: rgba(var(--ch-glow-rgb), 0.6);
+      color: var(--ch-glow);
+    }
+  }
+
+  .ch-guide-section {
+    margin-top: 16px;
+
+    h3 {
+      margin: 0 0 8px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid var(--ch-metal);
+      color: var(--ch-trim);
+      font-family: var(--ch-font-title);
+      font-size: var(--font-size-18);
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .ch-hint {
+    margin: 6px 0 0;
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-12);
+
+    &.ch-yes i {
+      color: var(--ch-glow);
+    }
+
+    &.ch-no i {
+      color: var(--ch-danger);
+    }
+  }
+
+  .ch-withheld {
+    margin-top: 16px;
+    font-style: italic;
+  }
+
+  /* "Worked with": one row per set, then the resource's own tools. */
+  .ch-tool-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .ch-tool-row-label {
+    color: var(--ch-text-dim);
+    font-size: var(--font-size-12);
+
+    i {
+      color: var(--ch-trim);
+    }
+  }
+
+  .ch-tool-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* A tool slot is a button: it opens the tool on the Tools tab. Core gives every button a 36px
+     minimum and padding. */
+  button.ch-slot {
+    --ch-slot: 44px;
+    min-height: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  /* Carried by the selected token: the theme's glow, and a check on the rim. */
+  .ch-slot.ch-carried {
+    border-color: var(--ch-glow);
+    box-shadow: inset 0 3px 8px #000c, 0 0 10px rgba(var(--ch-glow-rgb), 0.6);
+
+    &::after {
+      content: "\f00c";
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      display: grid;
+      place-items: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--ch-glow);
+      color: var(--ch-bg-0);
+      font-family: "Font Awesome 6 Pro";
+      font-size: 9px;
+      font-weight: 900;
+    }
+  }
+
+  /* Yields: each drop with its amount and, when the GM shows it, a bar of its chance. */
+  .ch-guide-drops {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+
+  .ch-guide-drop {
+    --ch-slot: 42px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border: 1px solid var(--ch-metal);
+    border-radius: var(--ch-radius);
+    background: var(--ch-bg-1);
+  }
+
+  .ch-guide-drop-text {
+    flex: 1;
+    min-width: 0;
+
+    b {
+      display: block;
+      overflow: hidden;
+      font-weight: 600;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    small {
+      color: var(--ch-text-dim);
+    }
+  }
+
+  .ch-chance {
+    display: block;
+    height: 4px;
+    margin-top: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--ch-bg-2);
+
+    > i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--ch-trim), var(--ch-glow-2));
+    }
+  }
+
+  /* "Opens": a card per resource the tool works. */
+  .ch-guide-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 8px;
+  }
+
+  .ch-guide-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: auto;
+    min-height: 0;
+    padding: 8px 4px;
+    border: 1px solid var(--ch-metal);
+    border-radius: var(--ch-radius);
+    background: var(--ch-bg-1);
+    color: var(--ch-text);
+    font-size: var(--font-size-13);
+    text-align: center;
+
+    img,
+    video {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--ch-trim);
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    &:is(button):hover {
+      border-color: var(--ch-trim-hi);
+      box-shadow: 0 0 8px rgba(var(--ch-glow-rgb), 0.4);
+    }
+
+    &.ch-unknown {
+      color: var(--ch-text-dim);
+      font-style: italic;
+      letter-spacing: 0.1em;
+    }
+  }
+
+  /* An unknown resource's page: its silhouette in the seal, its group, and how it gets written down. */
+  .ch-guide-unknown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 100%;
+    text-align: center;
+
+    h2 {
+      margin: 4px 0 0;
+      border: none;
+      color: var(--ch-text-dim);
+      font-family: var(--ch-font-title);
+      letter-spacing: 0.3em;
+    }
+
+    .ch-hint {
+      max-width: 320px;
+    }
+  }
+}
