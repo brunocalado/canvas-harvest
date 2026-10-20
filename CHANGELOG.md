@@ -1,4 +1,4 @@
-# Unreleased
+# 0.1.0
 
 - [Added] The first harvest of a resource, or a try without its tool, writes it into the Field Guide; the chat card and a notification say so.
 - [Breaking][Removed] The "Whisper the Tools Needed" setting and the whispered tool card: the Field Guide shows the tools instead.
