@@ -461,4 +461,38 @@
       max-width: 320px;
     }
   }
+
+  /* GM only: a reminder that this is the players' view, under the window's header. */
+  .ch-guide-banner {
+    margin: 0;
+    padding: 4px 14px;
+    background: rgba(var(--ch-glow-rgb), 0.1);
+    border-bottom: 1px solid var(--ch-metal-hi);
+    color: var(--ch-glow);
+    font-size: var(--font-size-12);
+  }
+
+  /* GM only: what every entry shows players, and the way back to the Resource Book. */
+  .ch-guide-gm {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 6px 14px 10px;
+    background: linear-gradient(180deg, var(--ch-bg-2), var(--ch-bg-1));
+    border-top: 1px solid var(--ch-trim);
+
+    .ch-players-see {
+      gap: 6px;
+
+      .ch-help {
+        margin-left: 6px;
+      }
+    }
+
+    .ch-open-book {
+      width: 36px;
+      height: 34px;
+      margin-left: auto;
+    }
+  }
 }

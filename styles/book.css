@@ -71,7 +71,8 @@
     gap: 8px;
     width: 100%;
     height: auto;
-    padding: 3px 26px 3px 6px;
+    /* Room at the row's end for the eye and the animation's marker. */
+    padding: 3px 48px 3px 6px;
     background: transparent;
     border: 1px solid transparent;
     border-radius: var(--ch-radius);
@@ -143,11 +144,11 @@
     }
   }
 
-  /* The animation the resource uses, quiet at the row's end. */
+  /* The animation the resource uses, quiet at the row's end, just before the eye. */
   .ch-row-marker {
     position: absolute;
     top: 50%;
-    right: 8px;
+    right: 30px;
     translate: 0 -50%;
     color: var(--ch-text-dim);
     font-size: var(--font-size-11);
@@ -160,12 +161,82 @@
 
   /* A package's resource the GM edited, just before the animation's marker. */
   .ch-edited-marker {
-    right: 24px;
+    right: 46px;
     color: var(--ch-trim);
   }
 
   .ch-entry:has(~ .ch-edited-marker) {
-    padding-right: 42px;
+    padding-right: 64px;
+  }
+
+  /* Whether players see a resource in the Field Guide: always, once found, never. A click moves it on,
+     and is written at once. On a row and on a group's heading it is a bare glyph in its state's colour. */
+  .ch-eye {
+    &[data-state="shown"] {
+      color: var(--ch-glow);
+    }
+
+    &[data-state="discover"] {
+      color: var(--ch-trim-hi);
+    }
+
+    &[data-state="hidden"] {
+      color: var(--ch-danger);
+    }
+  }
+
+  li > .ch-eye,
+  .ch-group-eye {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    font-size: var(--font-size-11);
+
+    &:hover {
+      border-color: var(--ch-metal-hi);
+      background: var(--ch-bg-2);
+    }
+  }
+
+  li > .ch-eye {
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    translate: 0 -50%;
+  }
+
+  /* After the count; in a category's heading, after its fading rule too. */
+  .ch-group-eye {
+    order: 3;
+    margin-left: 2px;
+  }
+
+  /* Found by the party: a small glowing dot on the eye's rim. */
+  .ch-found {
+    position: absolute;
+    right: 1px;
+    bottom: 1px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ch-glow);
+    box-shadow: 0 0 4px var(--ch-glow);
+    pointer-events: none;
+  }
+
+  .ch-guide-field {
+    gap: 6px;
+
+    .ch-eye {
+      position: relative;
+    }
   }
 
   /* The detail pane's layout; its backdrop is the shared .ch-backdrop. */
@@ -241,9 +312,9 @@
     font-size: var(--font-size-18);
   }
 
-  /* The head's first row: name, verb, then sound as wide as its button. */
+  /* The head's first row: name, verb, then sound and the guide as wide as their buttons. */
   .ch-book-names > .ch-row:first-child {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto auto;
   }
 
   /* The second row: animation as wide as its buttons, the Tool Sets taking the rest. */
@@ -445,13 +516,11 @@
       height: 34px;
     }
 
-    /* Pushes the rest right; a package's note, when there is one, takes over the slack. */
     .ch-category {
       flex: 0 1 auto;
       min-width: 0;
       max-width: 22ch;
       height: 34px;
-      margin-right: auto;
 
       span {
         overflow: hidden;
@@ -464,7 +533,12 @@
       }
     }
 
-    .ch-category:has(+ .ch-from) {
+    /* The Field Guide button pushes the rest right; a package's note, when there is one, takes over the slack. */
+    .ch-open-guide {
+      margin-right: auto;
+    }
+
+    .ch-open-guide:has(+ .ch-from) {
       margin-right: 0;
     }
 

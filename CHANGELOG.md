@@ -1,5 +1,6 @@
 # Unreleased
 
+- [Added] An eye on each resource and group in the Resource Book sets whether it is always, once found, or never in the Field Guide; the guide's footer sets which fields players see.
 - [Added] Field Guide: players open it from the Items directory, or by right-clicking a spot, to see the resources they know, the tools each takes and what it gives.
 - [Added] Packages can suggest whether each resource they register shows in the Field Guide (`guide` in registerResources).
 

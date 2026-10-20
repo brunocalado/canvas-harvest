@@ -22,6 +22,10 @@
   </button>
   {{/inline}}
 
+  {{#if isGM}}
+  <p class="ch-guide-banner"><i class="fa-solid fa-user" inert></i> {{localize "CANVASHARVEST.Guide.AsPlayers"}}</p>
+  {{/if}}
+
   {{!-- Core's tab handling reads data-action, data-group and data-tab. --}}
   <nav class="tabs ch-tabs" aria-roledescription="{{localize "SHEETS.FormNavLabel"}}">
     {{#each tabs}}
@@ -189,4 +193,24 @@
       {{/if}}
     </section>
   </div>
+
+  {{#if isGM}}
+  <footer class="ch-guide-gm">
+    <fieldset class="ch-field ch-players-see">
+      <legend>{{localize "CANVASHARVEST.Guide.PlayersSee"}}</legend>
+      {{#each gmFields}}
+      <button type="button" class="ch-icon-button {{#if on}}ch-active{{/if}}" data-action="toggleField" data-field="{{id}}"
+              aria-pressed="{{on}}" aria-label="{{tip}}" data-tooltip="{{tip}}" {{disabled locked}}>
+        <i class="fa-solid {{icon}}" inert></i>
+      </button>
+      {{/each}}
+      <i class="fa-solid fa-circle-question ch-help" data-tooltip-html="{{playersSeeHelp}}"
+         data-tooltip-class="canvas-harvest ch-tooltip ch-theme-{{theme}}" data-tooltip-direction="UP"></i>
+    </fieldset>
+    <button type="button" class="ch-icon-button ch-open-book" data-action="openBook"
+            aria-label="{{localize "CANVASHARVEST.Settings.ResourceBook.Label"}}" data-tooltip="CANVASHARVEST.Settings.ResourceBook.Label">
+      <i class="fa-solid fa-book-open" inert></i>
+    </button>
+  </footer>
+  {{/if}}
 </div>

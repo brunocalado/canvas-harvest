@@ -6,15 +6,19 @@
  * it under the terms of the GNU General Public License version 3.
  */
 
-import { ANIMATION_ICONS, ANIMATIONS, GUIDE_APP_ID, MODULE_ID, TEMPLATE_PATH, THEMES } from "../constants.js";
 import {
-  bindSearch, chance, filterGroups, getCollapsed, getTheme, groupLabel, isWebm, liveRef, refMatches, searchKey, setCollapsed,
+  ANIMATION_ICONS, ANIMATIONS, BOOK_APP_ID, GUIDE_APP_ID, GUIDE_FIELD_ICONS, GUIDE_FIELDS, MODULE_ID, SETTING_GUIDE_FIELDS, TEMPLATE_PATH,
+  THEMES
+} from "../constants.js";
+import {
+  bindSearch, chance, filterGroups, getCollapsed, getTheme, groupLabel, help, isWebm, liveRef, refMatches, searchKey, setCollapsed,
   SingleWindow
 } from "../helpers.js";
 import { AmbientFX } from "../ambient-fx.js";
 import { carriesTool, guideFields, isKnown, isListed, resourceTools } from "../guide.js";
 import { getAllResources, getResource } from "../resources.js";
 import { getToolSet } from "../tool-sets.js";
+import { ResourceBook } from "./resource-book.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -38,7 +42,9 @@ export class FieldGuide extends SingleWindow(HandlebarsApplicationMixin(Applicat
     position: { width: 820, height: "auto" },
     actions: {
       selectResource: FieldGuide.#onSelectResource,
-      selectTool: FieldGuide.#onSelectTool
+      selectTool: FieldGuide.#onSelectTool,
+      toggleField: FieldGuide.#onToggleField,
+      openBook: FieldGuide.#onOpenBook
     }
   };
 
@@ -174,8 +180,28 @@ export class FieldGuide extends SingleWindow(HandlebarsApplicationMixin(Applicat
       resource: selected ? this.#resourceDetail(selected, known.has(selected.id), { fields, actor, carries, slot, loc }) : null,
       toolGroups,
       tool: toolRef ? this.#toolDetail(toolRef, { listed, known, setItems, sameTool, carries, loc }) : null,
-      bareHands: fields.tools ? this.#bareHands(listed, known, loc) : ""
+      bareHands: fields.tools ? this.#bareHands(listed, known, loc) : "",
+      // The GM sees the players' guide, plus the switches for what every entry shows them.
+      isGM: game.user.isGM,
+      gmFields: game.user.isGM ? this.#gmFields(fields, loc) : [],
+      playersSeeHelp: help("CANVASHARVEST.Guide.PlayersSee", "CANVASHARVEST.Guide.PlayersSeeHint")
     };
+  }
+
+  /**
+   * The GM's switches, one per field, lit while players see it. Chances mean nothing without Yields,
+   * so that switch is locked while Yields is off.
+   * @param {Record<string, boolean>} fields
+   * @param {Function} loc
+   * @returns {object[]}
+   */
+  #gmFields(fields, loc) {
+    return GUIDE_FIELDS.map(id => {
+      const locked = (id === "chances") && !fields.drops;
+      const field = loc(`Field.${id}`);
+      return { id, icon: GUIDE_FIELD_ICONS[id], on: fields[id], locked,
+        tip: loc(locked ? "NeedsYields" : (fields[id] ? "Shown" : "Hidden"), { field }) };
+    });
   }
 
   /**
@@ -304,6 +330,26 @@ export class FieldGuide extends SingleWindow(HandlebarsApplicationMixin(Applicat
   static #onSelectResource(event, target) {
     this.resourceId = target.dataset.resourceId;
     this.render({ tab: "resources" });
+  }
+
+  /**
+   * Show or hide one field for every player. The setting's onChange re-renders the guide on every client.
+   * @this {FieldGuide}
+   */
+  static async #onToggleField(event, target) {
+    if ( !game.user.isGM ) return;
+    const stored = game.settings.get(MODULE_ID, SETTING_GUIDE_FIELDS) ?? {};
+    // As stored, not as shown: Chances keeps its own choice while Yields is off.
+    const fields = Object.fromEntries(GUIDE_FIELDS.map(field => [field, stored[field] !== false]));
+    fields[target.dataset.field] = !fields[target.dataset.field];
+    await game.settings.set(MODULE_ID, SETTING_GUIDE_FIELDS, fields);
+  }
+
+  /** @this {FieldGuide} */
+  static async #onOpenBook() {
+    const app = foundry.applications.instances.get(BOOK_APP_ID) ?? new ResourceBook();
+    await app.render({ force: true });
+    app.bringToFront();
   }
 
   /**

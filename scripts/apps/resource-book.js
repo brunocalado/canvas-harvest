@@ -7,7 +7,8 @@
  */
 
 import {
-  ANIMATION_ICONS, ANIMATIONS, BOOK_APP_ID, MODULE_ID, RESOURCE_DRAG_TYPE, RESOURCE_LIMITS, SETTING_SOUND_RADIUS, TEMPLATE_PATH, THEMES
+  ANIMATION_ICONS, ANIMATIONS, BOOK_APP_ID, GUIDE_APP_ID, GUIDE_STATE_ICONS, GUIDE_STATES, MODULE_ID, RESOURCE_DRAG_TYPE, RESOURCE_LIMITS,
+  SETTING_SOUND_RADIUS, TEMPLATE_PATH, THEMES
 } from "../constants.js";
 import {
   bindSearch, chance, confirmDialog, droppedItemRef, filterGroups, getCollapsed, getTheme, groupLabel, help, isWebm, liveRef, readCaret,
@@ -15,8 +16,10 @@ import {
 } from "../helpers.js";
 import { AmbientFX } from "../ambient-fx.js";
 import { playCue } from "../sound.js";
+import { guideState, isFound, setFound, setGuideState } from "../guide.js";
 import { blankResource, deleteResource, getAllResources, getResource, restoreResource, saveResource, validateResource } from "../resources.js";
 import { getToolSet } from "../tool-sets.js";
+import { FieldGuide } from "./field-guide.js";
 import { ToolSetsConfig } from "./tool-sets-config.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -29,6 +32,27 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
  */
 function groupKey(r) {
   return `${r.source}::${groupLabel(r).toLocaleLowerCase()}`;
+}
+
+/**
+ * What a resource's eye shows: its state in the Field Guide, and whether the party has found it.
+ * @param {Resource} r
+ * @returns {{state: string, icon: string, found: boolean, tip: string}}
+ */
+function eyeOf(r) {
+  const state = guideState(r);
+  const found = (state === "discover") && isFound(r.id);
+  const tip = [game.i18n.localize(`CANVASHARVEST.Guide.State.${state}`)];
+  if ( state === "discover" ) tip.push(game.i18n.localize(found ? "CANVASHARVEST.Guide.FoundYes" : "CANVASHARVEST.Guide.FoundNo"));
+  return { state, icon: GUIDE_STATE_ICONS[state], found, tip: tip.join(" · ") };
+}
+
+/**
+ * @param {string} state
+ * @returns {string} the state an eye's click moves to: shown, discover, hidden, and round again
+ */
+function nextGuideState(state) {
+  return GUIDE_STATES[(GUIDE_STATES.indexOf(state) + 1) % GUIDE_STATES.length];
 }
 
 /**
@@ -57,7 +81,11 @@ export class ResourceBook extends SingleWindow(HandlebarsApplicationMixin(Applic
       clearTool: ResourceBook.#onClearTool,
       clearDrop: ResourceBook.#onClearDrop,
       browseImage: ResourceBook.#onBrowseImage,
-      editSound: ResourceBook.#onEditSound
+      editSound: ResourceBook.#onEditSound,
+      cycleGuide: ResourceBook.#onCycleGuide,
+      cycleGuideGroup: ResourceBook.#onCycleGuideGroup,
+      toggleFound: ResourceBook.#onToggleFound,
+      openGuide: ResourceBook.#onOpenGuide
     }
   };
 
@@ -96,7 +124,7 @@ export class ResourceBook extends SingleWindow(HandlebarsApplicationMixin(Applic
     const L = RESOURCE_LIMITS;
     const toEntry = r => ({
       id: r.id, name: r.name, img: r.img, video: isWebm(r.img), active: r.id === draft.id, edited: !!r.edited,
-      icon: ANIMATION_ICONS[r.animation],
+      icon: ANIMATION_ICONS[r.animation], guide: eyeOf(r),
       search: searchKey(`${r.name} ${r.verb} ${r.category} ${[...r.tools, ...r.drops.map(d => d.item)].map(i => liveRef(i).name).join(" ")}`),
       // Where a registered resource comes from, then the hint that the row drags onto the map.
       tip: [(r.source === "world") ? ""
@@ -114,25 +142,36 @@ export class ResourceBook extends SingleWindow(HandlebarsApplicationMixin(Applic
       // A source whose resources all sit in one group stays a flat list: its one heading would say nothing.
       if ( sub.length < 2 ) {
         group.resources = list.map(toEntry);
+        group.guide = group.resources[0].guide;
         return group;
       }
       group.categories = sub.map(([key, members]) => {
         const label = groupLabel(members[0]);
         const verb = verbs.get(label.toLocaleLowerCase());
+        const resources = members.map(toEntry);
         return { key, label: verb?.label ?? label, icon: verb?.icon, count: members.length,
-          collapsed: this.#collapsed.has(key), resources: members.map(toEntry) };
+          collapsed: this.#collapsed.has(key), resources, guide: resources[0].guide };
       }).sort((a, b) => a.label.localeCompare(b.label));
+      // A group's eye shows the state of its first row, the one a click starts from.
+      group.guide = group.categories[0].guide;
       return group;
     });
     const totalWeight = draft.drops.reduce((sum, d) => sum + d.weight, 0);
     const tools = Array.from({ length: L.tools }, (_, index) => ({ index, item: draft.tools[index] ? liveRef(draft.tools[index]) : null }));
+    const isNew = !all.some(r => r.id === draft.id);
+    const eye = eyeOf(draft);
     return {
       theme: getTheme(),
       query: this.#query,
       groups,
       draft,
       imgVideo: isWebm(draft.img),
-      isNew: !all.some(r => r.id === draft.id),
+      isNew,
+      // The guide's controls write at once, outside the draft, so a resource not saved yet has none.
+      guide: eye,
+      groupEyeTip: game.i18n.localize("CANVASHARVEST.Guide.Group"),
+      found: { on: isFound(draft.id), locked: isNew || (eye.state !== "discover"),
+        tip: game.i18n.localize(isFound(draft.id) ? "CANVASHARVEST.Guide.Forget" : "CANVASHARVEST.Guide.MarkFound") },
       // A blank new resource has no source until it is saved into the world.
       isPackage: !!draft.source && (draft.source !== "world"),
       // As saved: Restore is offered only for an edit that still exists.
@@ -611,6 +650,46 @@ export class ResourceBook extends SingleWindow(HandlebarsApplicationMixin(Applic
     const tab = this.draft.toolSets[0] ?? this.draft.animation;
     const app = foundry.applications.instances.get(ToolSetsConfig.DEFAULT_OPTIONS.id) ?? new ToolSetsConfig();
     await app.render({ force: true, tab });
+    app.bringToFront();
+  }
+
+  /**
+   * Move a resource to its next state in the Field Guide. It is written at once, beside the resource
+   * rather than in it: a package's resource would otherwise turn into a GM edit. The setting's
+   * onChange re-renders the book, and an unsaved draft survives it.
+   * @this {ResourceBook}
+   */
+  static async #onCycleGuide(event, target) {
+    const resource = getResource(target.dataset.resourceId);
+    if ( resource ) await setGuideState([resource.id], nextGuideState(guideState(resource)));
+  }
+
+  /**
+   * Set every resource of a group (a source or a category) to the state after the one its eye shows,
+   * in one write.
+   * @this {ResourceBook}
+   */
+  static async #onCycleGuideGroup(event, target) {
+    // The eye sits in the group's summary, whose click would also fold the group.
+    event.preventDefault();
+    const key = target.dataset.group;
+    const ids = getAllResources().filter(r => (r.source === key) || (groupKey(r) === key)).map(r => r.id);
+    if ( ids.length ) await setGuideState(ids, nextGuideState(target.dataset.state));
+  }
+
+  /**
+   * Mark the draft's resource found by the party, or forget it: the GM's override of discovery.
+   * @this {ResourceBook}
+   */
+  static async #onToggleFound() {
+    const id = this.draft.id;
+    if ( getResource(id) ) await setFound(id, !isFound(id));
+  }
+
+  /** @this {ResourceBook} */
+  static async #onOpenGuide() {
+    const app = foundry.applications.instances.get(GUIDE_APP_ID) ?? new FieldGuide();
+    await app.render({ force: true });
     app.bringToFront();
   }
 

@@ -1177,5 +1177,99 @@ export const cases = [
         await removeGuideResources(t);
       }
     }
+  },
+  {
+    name: "guide: the book's eyes write at once, leave the draft alone, and never edit a package's resource",
+    async run(t) {
+      const { gm, ev, ids } = t;
+      const r = await ev(gm, `CanvasHarvest.registerResources("ch-test", [
+          { id: "one", name: "CH Pkg One", category: "CH Pkg", drops: [{ uuid: ${JSON.stringify(ids.ore)} }] },
+          { id: "two", name: "CH Pkg Two", category: "CH Pkg", drops: [{ uuid: ${JSON.stringify(ids.ore)} }] },
+          { id: "three", name: "CH Pkg Three", category: "CH Other", drops: [{ uuid: ${JSON.stringify(ids.ore)} }] }]);
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const vis = () => game.settings.get("canvas-harvest", "guideVisibility");
+        const out = {};
+        const book = await CanvasHarvest.openBook({ resource: "ch-test.one" }); await wait(800);
+        const row = id => book.element.querySelector('.ch-entry[data-resource-id="' + id + '"]');
+        const rowEye = id => row(id).parentElement.querySelector(".ch-eye");
+        out.drag = { entry: row("ch-test.one").draggable, eye: rowEye("ch-test.one").draggable };
+        // An unsaved name, then the row's eye: shown is the state after discover.
+        const input = book.element.querySelector('.ch-book-detail [name="name"]');
+        input.value = "CH unsaved"; input.dispatchEvent(new Event("input"));
+        rowEye("ch-test.one").click(); await wait(800);
+        out.afterRowEye = { state: vis()["ch-test.one"], name: book.draft.name, dirty: book.dirty,
+          edited: CanvasHarvest.getResource("ch-test.one").edited ?? false, inEdits: "ch-test.one" in game.settings.get("canvas-harvest", "resourceEdits") };
+        // The editor's eye, then the found toggle while the state is discover.
+        book.element.querySelector('.ch-guide-field [data-action="cycleGuide"]').click(); await wait(800);
+        out.lockedWhenHidden = book.element.querySelector('[data-action="toggleFound"]').disabled;
+        out.afterHeadEye = vis()["ch-test.one"];
+        rowEye("ch-test.one").click(); await wait(800);
+        out.afterThird = vis()["ch-test.one"];
+        book.element.querySelector('[data-action="toggleFound"]').click(); await wait(800);
+        out.found = game.settings.get("canvas-harvest", "guideFound").includes("ch-test.one");
+        out.foundDot = !!rowEye("ch-test.one").querySelector(".ch-found");
+        out.draftAfter = { name: book.draft.name, dirty: book.dirty };
+        // A group's eye: one write, and the group stays as it was.
+        const groupEye = book.element.querySelector('details.ch-subgroup[data-group="ch-test::ch pkg"] > summary .ch-group-eye');
+        const details = groupEye.closest("details");
+        const openBefore = details.open;
+        const set = game.settings.set; let writes = 0;
+        game.settings.set = function(...args) { writes++; return set.apply(this, args); };
+        groupEye.click(); await wait(800);
+        game.settings.set = set;
+        out.group = { writes, open: book.element.querySelector('details.ch-subgroup[data-group="ch-test::ch pkg"]').open, openBefore,
+          one: vis()["ch-test.one"], two: vis()["ch-test.two"], three: vis()["ch-test.three"] ?? null };
+        book.dirty = false; await book.close();
+        const clean = { ...vis() };
+        for ( const id of ["ch-test.one", "ch-test.two", "ch-test.three"] ) delete clean[id];
+        await game.settings.set("canvas-harvest", "guideVisibility", clean);
+        await game.settings.set("canvas-harvest", "guideFound", game.settings.get("canvas-harvest", "guideFound").filter(id => !id.startsWith("ch-test.")));
+        CanvasHarvest.unregisterResources("ch-test");
+        return out;`);
+      assert(r.drag.entry === true && r.drag.eye === false, `draggable: ${JSON.stringify(r.drag)}`);
+      const a = r.afterRowEye;
+      assert(a.state === "hidden", `the row's eye moved discover to ${a.state}`);
+      assert(a.name === "CH unsaved" && a.dirty, `the eye touched the draft: ${JSON.stringify(a)}`);
+      assert(!a.edited && !a.inEdits, "the eye made the package's resource edited");
+      assert(r.afterHeadEye === "shown" && r.afterThird === "discover", `the eyes cycled ${r.afterHeadEye}, ${r.afterThird}`);
+      assert(r.lockedWhenHidden, "Mark as found was offered for a resource that isn't discover");
+      assert(r.found && r.foundDot, "Mark as found did not mark it, or the eye shows no dot");
+      assert(r.draftAfter.name === "CH unsaved" && r.draftAfter.dirty, `the found toggle touched the draft: ${JSON.stringify(r.draftAfter)}`);
+      assert(r.group.writes === 1, `a group eye wrote ${r.group.writes} times`);
+      assert(r.group.open === r.group.openBefore, "the group eye folded its group");
+      assert(r.group.one === r.group.two && r.group.three === null, `the group eye set ${JSON.stringify(r.group)}`);
+    }
+  },
+  {
+    name: "guide: the GM's field switches reach the player at once, and Chances needs Yields",
+    async run(t) {
+      const { gm, pl, ev, until } = t;
+      await addGuideResources(t);
+      try {
+        await ev(pl, `await CanvasHarvest.openGuide({ resource: ${JSON.stringify(GUIDE.bold)} });`);
+        await until(pl, `!!document.querySelector('#canvas-harvest-guide .ch-chance')`);
+        const r = await ev(gm, `const guide = await CanvasHarvest.openGuide({ resource: ${JSON.stringify(GUIDE.bold)} });
+          await new Promise(r => setTimeout(r, 600));
+          const button = f => guide.element.querySelector('[data-action="toggleField"][data-field="' + f + '"]');
+          const out = { footer: !!guide.element.querySelector(".ch-guide-gm"), banner: !!guide.element.querySelector(".ch-guide-banner") };
+          button("chances").click(); await new Promise(r => setTimeout(r, 800));
+          out.chancesOff = game.settings.get("canvas-harvest", "guideFields").chances === false;
+          button("chances").click(); await new Promise(r => setTimeout(r, 800));
+          button("drops").click(); await new Promise(r => setTimeout(r, 800));
+          out.lockedWithoutDrops = button("chances").disabled;
+          return out;`);
+        assert(r.footer && r.banner, "the GM's guide lacks its footer or banner");
+        assert(r.chancesOff, "the Chances switch did not write the setting");
+        assert(r.lockedWithoutDrops, "Chances can be pressed while Yields is off");
+        const pd = await ev(pl, `return { footer: !!document.querySelector("#canvas-harvest-guide .ch-guide-gm"),
+          banner: !!document.querySelector("#canvas-harvest-guide .ch-guide-banner") };`);
+        assert(!pd.footer && !pd.banner, "the player sees the GM's footer or banner");
+        await until(pl, `!document.querySelector('#canvas-harvest-guide .ch-yields')`);
+      } finally {
+        await ev(pl, `await foundry.applications.instances.get("canvas-harvest-guide")?.close();`);
+        await ev(gm, `await foundry.applications.instances.get("canvas-harvest-guide")?.close();`);
+        await removeGuideResources(t);
+      }
+    }
   }
 ];

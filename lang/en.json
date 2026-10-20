@@ -60,7 +60,8 @@
       "Min": "Min",
       "Max": "Max",
       "Strikes": "Strikes",
-      "Sound": "Sound"
+      "Sound": "Sound",
+      "Guide": "Guide"
     },
     "ToolSets": {
       "Title": "Tool Sets",
@@ -119,7 +120,8 @@
       "SoundEnabled": "Play sounds",
       "SoundRadius": "Reach",
       "SoundRadiusHint": "How far this resource's harvests are heard, in grid spaces. Dimmed, it follows the reach set in Harvest Sounds.",
-      "ResetReach": "Use the reach set in Harvest Sounds"
+      "ResetReach": "Use the reach set in Harvest Sounds",
+      "OpenGuide": "Open the Field Guide"
     },
     "Guide": {
       "Title": "Field Guide",
@@ -146,7 +148,29 @@
       "CarriesNone": "Your token carries none of these.",
       "Special": "Special",
       "Withheld": "The GM keeps the rest to themselves.",
-      "Empty": "Nothing in the guide yet."
+      "Empty": "Nothing in the guide yet.",
+      "State": {
+        "shown": "Always in the Field Guide",
+        "discover": "In the Field Guide once found",
+        "hidden": "Never in the Field Guide"
+      },
+      "FoundYes": "found",
+      "FoundNo": "not found yet",
+      "MarkFound": "Mark as found",
+      "Forget": "Forget it",
+      "Group": "Set the whole group",
+      "PlayersSee": "Players see",
+      "PlayersSeeHint": "What every entry of the Field Guide shows to players. A field switched off still shows in the Resource Book.",
+      "AsPlayers": "As your players see it. Hidden resources are left out.",
+      "Field": {
+        "tools": "Tools",
+        "drops": "Yields",
+        "chances": "Chances",
+        "strikes": "Strikes"
+      },
+      "Shown": "{field}: shown",
+      "Hidden": "{field}: hidden",
+      "NeedsYields": "{field}: needs Yields"
     },
     "Errors": {
       "GMOnly": "Only a GM can do that.",
