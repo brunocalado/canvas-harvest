@@ -56,6 +56,8 @@ async function login(user) {
   // The join form changed within v14: a select named userid up to ~14.365, a text field after, and a
   // select named userId again from 14.369. Attribute values match case-sensitively.
   const select = page.locator("select[name=userid], select[name=userId], #join-username");
+  // A server that just started can render the form after the network goes quiet.
+  await page.waitForSelector("select[name=userid], select[name=userId], #join-username, input[name=username]", { timeout: 60000 });
   if ( (await select.count()) && (await select.first().evaluate(el => el.tagName)) === "SELECT" ) {
     await select.first().selectOption({ label: user });
   }
