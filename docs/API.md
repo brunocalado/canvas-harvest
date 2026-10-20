@@ -20,8 +20,6 @@ The API is available as `CanvasHarvest` and as `game.modules.get("canvas-harvest
 - [Reference](#reference)
 - [Full example: a module with its own compendium](#full-example-a-module-with-its-own-compendium)
 
----
-
 ## Quick start
 
 A module adds its pickaxe to the Mine Tool Set and registers an iron vein that takes any tool from
@@ -60,8 +58,6 @@ await CanvasHarvest.createSpot({
 
 A player whose token stands in the spot sees its button on the map and strikes it with a click.
 
----
-
 ## When to register
 
 Registered resources live in memory, on each client. Register them on **every** client, every time
@@ -76,8 +72,6 @@ Hooks.once("canvas-harvest.ready", api => {
 
 The hook only fires when Canvas Harvest is active, so you don't need to check. Register after your
 compendium's index is loaded, which `ready` guarantees: tools and drops are looked up there.
-
----
 
 ## Hooks
 
@@ -129,8 +123,6 @@ sources }`), and `undelivered` the part that found no space on the map in the en
 whisper about it). `left` is the strikes the spot has left, and `user` the `User` who struck. It
 fires on the GM's client only, so a listener that writes documents runs once. A strike that put
 nothing on the map is given back to the spot and fires no hook.
-
----
 
 ## Chat messages
 
@@ -202,8 +194,6 @@ the `User` who struck.
 To style the default cards instead of replacing them, target `.canvas-harvest.ch-chat-card`; a
 depleted spot adds `.ch-depleted`, and a discovery adds a `.ch-chat-new` line with the guide's button.
 
----
-
 ## Resource format
 
 | Field | Type | | Limits |
@@ -234,8 +224,6 @@ To have players know a whole list from the start, mark every entry before regist
 registerResources("my-module", RESOURCES.map(r => ({ ...r, guide: "shown" })));
 ```
 
----
-
 ## Tags
 
 A tag is a string that Canvas Harvest keeps on a resource and hands back, and never reads. Your
@@ -265,8 +253,6 @@ Hooks.on("canvas-harvest.harvest", (token, { resource, user }) => {
 Tags are set only through the API: the Resource Book neither shows nor edits them, and keeps them
 when the GM saves.
 
----
-
 ## Tool Sets
 
 There are four Tool Sets, one per animation: `strike` (Mine), `chop`, `gather` and `carve`. Each is
@@ -285,8 +271,6 @@ by it until the set gets an item. In the Resource Book its switch is off and loc
 The active GM checks every strike against the sets on its own client, so register your tools on
 every client, the GM's included.
 
----
-
 ## How tools are matched
 
 A token can strike when its actor carries an item that **is** one of the tools, from a switched-on
@@ -299,8 +283,6 @@ set or the resource's own:
 
 So a pickaxe a GM made by hand still counts, as long as the name and type match. Point your tools at
 the same compendium items you hand out to players, and matching is exact.
-
----
 
 ## Spots
 
@@ -356,8 +338,6 @@ Hooks.once("ready", regrow);
 `refill` takes a number too, so a spot can come back partly, or with a roll:
 `CanvasHarvest.refill(spot, (await new Roll("1d4").evaluate()).total)`. A spot in a scene nobody
 is viewing is refilled all the same, and players find it full when they get there.
-
----
 
 ## Reference
 
@@ -480,7 +460,6 @@ await region.createEmbeddedDocuments("RegionBehavior", [{
 }]);
 ```
 
-
 ### `getSpots(scene)` → `object[]`
 
 Every spot on a scene (`canvas.scene` by default), as
@@ -504,8 +483,6 @@ Strikes a spot with a token, by the same rules and the same path as a click on i
 token must be the user's and stand in the spot, carry a tool when the resource asks for one, and the
 spot must have strikes left. Resolves `true` once the GM delivered the strike, `false` after a
 warning otherwise.
-
----
 
 ## Full example: a module with its own compendium
 
